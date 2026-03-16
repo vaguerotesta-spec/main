@@ -821,7 +821,7 @@ function renderTransactions(txns) {
                 <tr class="tc-detail hidden">
                     <td style="padding-left:2.5rem">
                         ${t.description}
-                        ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}
+                        ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}${_isLastCuota(t) ? '<span class="badge" style="background:#e8f5e3;color:var(--green-dark);font-weight:600">ultima cuota!</span>' : ''}
                         ${cardMap.size <= 1 && card ? cardBadge : ''}
                     </td>
                     <td><select style="padding:0.2rem 0.4rem;font-size:0.8rem;border:1px solid var(--gray-light);border-radius:4px;background:var(--white)" onchange="event.stopPropagation(); updateSubcategory(${t.id}, this.value)">
@@ -847,7 +847,7 @@ function renderTxnRow(t) {
         <td>
             ${t.description}
             ${t.is_fixed ? '<span class="badge badge-fixed">fijo</span>' : ''}
-            ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}
+            ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}${_isLastCuota(t) ? '<span class="badge" style="background:#e8f5e3;color:var(--green-dark);font-weight:600">ultima cuota!</span>' : ''}
         </td>
         <td>${categories[t.category] || t.category} ${subLabel ? `<span class="badge badge-sub">${subLabel}</span>` : ''}</td>
         <td class="${t.transaction_type === 'income' ? 'amount-income' : 'amount-expense'}">
@@ -859,6 +859,13 @@ function renderTxnRow(t) {
             <button class="btn btn-danger btn-sm" onclick="deleteTxn(${t.id})">x</button>
         </td>
     </tr>`;
+}
+
+function _isLastCuota(t) {
+    if (!t.installment_number) return false;
+    const m = t.description.match(/cuota\s+(\d+)\s*\/\s*(\d+)/i);
+    if (m) return parseInt(m[1]) === parseInt(m[2]);
+    return false;
 }
 
 function toggleCharts() {
