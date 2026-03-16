@@ -144,3 +144,29 @@ class PeriodInsightsResponse(BaseModel):
     previous_period_id: Optional[int]
     insights: list[InsightItem]
     summary: str
+
+
+# ── Card Statement Import ────────────────────────────────
+
+
+class StatementLinePreview(BaseModel):
+    description: str
+    amount: float
+    subcategory: str
+    date: str
+
+
+class StatementParseRequest(BaseModel):
+    period_id: int
+    text: str
+
+
+class StatementParseResponse(BaseModel):
+    lines: list[StatementLinePreview]
+    total: float
+    count: int
+
+
+class StatementImportRequest(BaseModel):
+    period_id: int
+    lines: list[StatementLinePreview]

@@ -19,38 +19,29 @@
             --green-dark: #6B9B60;
             --red-soft: #D4A5A5;
             --red-dark: #B07A7A;
+            --purple-light: #e8e0f2;
+            --purple: #7B5EA7;
             --shadow: 0 2px 12px rgba(92, 86, 82, 0.08);
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: var(--beige);
             color: var(--gray-dark);
             min-height: 100vh;
         }
-
         header {
             background: var(--white);
             border-bottom: 1px solid var(--gray-light);
             padding: 1.25rem 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
             box-shadow: var(--shadow);
         }
-        header h1 { font-size: 1.5rem; font-weight: 600; color: var(--gray-dark); letter-spacing: -0.5px; }
+        header h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.5px; }
         header h1 span { color: var(--pink-dark); }
-
         .btn {
-            padding: 0.5rem 1.15rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
+            padding: 0.5rem 1.15rem; border: none; border-radius: 8px;
+            font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
         }
         .btn-primary { background: var(--pink-dark); color: var(--white); }
         .btn-primary:hover { background: #9B6868; }
@@ -59,214 +50,163 @@
         .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
         .btn-danger { background: var(--red-soft); color: #fff; }
         .btn-danger:hover { background: var(--red-dark); }
-        .btn-success { background: var(--green-soft); color: var(--gray-dark); }
-        .btn-success:hover { background: var(--green-dark); color: #fff; }
         .btn-accent { background: var(--greige); color: var(--white); }
         .btn-accent:hover { background: var(--gray); }
-
+        .btn-purple { background: var(--purple); color: #fff; }
+        .btn-purple:hover { background: #6A4F91; }
         .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
-
         .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem; margin-bottom: 1.5rem;
         }
         .card {
-            background: var(--white);
-            border-radius: 14px;
-            padding: 1.25rem;
-            box-shadow: var(--shadow);
+            background: var(--white); border-radius: 14px;
+            padding: 1.25rem; box-shadow: var(--shadow);
         }
         .card-label {
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--gray);
-            margin-bottom: 0.35rem;
+            font-size: 0.78rem; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--gray); margin-bottom: 0.35rem;
         }
         .card-value { font-size: 1.6rem; font-weight: 700; }
         .card-sub { font-size: 0.8rem; color: var(--gray); margin-top: 0.25rem; }
         .text-green { color: var(--green-dark); }
         .text-red { color: var(--red-dark); }
         .text-pink { color: var(--pink-dark); }
-
         .section {
-            background: var(--white);
-            border-radius: 14px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-            margin-bottom: 1.5rem;
+            background: var(--white); border-radius: 14px;
+            padding: 1.5rem; box-shadow: var(--shadow); margin-bottom: 1.5rem;
         }
         .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;
         }
         .section-title { font-size: 1.1rem; font-weight: 600; }
-
         table { width: 100%; border-collapse: collapse; }
         th {
-            text-align: left;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--gray);
-            padding: 0.6rem 0.75rem;
-            border-bottom: 1px solid var(--gray-light);
+            text-align: left; font-size: 0.75rem; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--gray);
+            padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--gray-light);
         }
         td {
-            padding: 0.7rem 0.75rem;
-            font-size: 0.9rem;
+            padding: 0.7rem 0.75rem; font-size: 0.9rem;
             border-bottom: 1px solid var(--beige);
         }
         tr:hover td { background: var(--beige); }
         .amount-income { color: var(--green-dark); font-weight: 600; }
         .amount-expense { color: var(--red-dark); font-weight: 600; }
-
         .badge {
-            display: inline-block;
-            padding: 0.15rem 0.55rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            margin-left: 0.3rem;
+            display: inline-block; padding: 0.15rem 0.55rem; border-radius: 6px;
+            font-size: 0.75rem; font-weight: 500; margin-left: 0.3rem;
         }
         .badge-income { background: #e8f5e3; color: var(--green-dark); }
         .badge-expense { background: var(--pink-light); color: var(--pink-dark); }
         .badge-fixed { background: var(--gray-light); color: var(--gray); }
-        .badge-cuota { background: #e8e0f2; color: #7B5EA7; }
+        .badge-cuota { background: var(--purple-light); color: var(--purple); }
         .badge-sub { background: #f0ebe5; color: var(--greige); }
+
+        /* ── Collapsible TC row ─────────────────────────── */
+        .tc-row { cursor: pointer; }
+        .tc-row td { background: var(--pink-light); font-weight: 600; }
+        .tc-row:hover td { background: #ebcfcf; }
+        .tc-toggle { transition: transform 0.2s; display: inline-block; margin-right: 0.5rem; }
+        .tc-toggle.open { transform: rotate(90deg); }
+        .tc-detail td { padding-left: 2.5rem; font-weight: 400; background: #faf5f5; }
+        .tc-detail.hidden { display: none; }
+        .tc-count {
+            font-size: 0.75rem; font-weight: 400; color: var(--gray);
+            margin-left: 0.5rem;
+        }
 
         /* ── Insights ───────────────────────────────────── */
         .insights-section {
-            background: var(--white);
-            border-radius: 14px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow);
-            margin-bottom: 1.5rem;
+            background: var(--white); border-radius: 14px; padding: 1.5rem;
+            box-shadow: var(--shadow); margin-bottom: 1.5rem;
             border-left: 4px solid var(--pink);
         }
         .insight-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            padding: 0.6rem 0;
-            border-bottom: 1px solid var(--beige);
+            display: flex; align-items: flex-start; gap: 0.75rem;
+            padding: 0.6rem 0; border-bottom: 1px solid var(--beige);
         }
         .insight-item:last-child { border-bottom: none; }
         .insight-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            flex-shrink: 0;
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; flex-shrink: 0;
         }
         .icon-up { background: var(--pink-light); color: var(--red-dark); }
         .icon-down { background: #e8f5e3; color: var(--green-dark); }
         .icon-stable { background: var(--gray-light); color: var(--gray); }
-        .icon-new { background: #e8e0f2; color: #7B5EA7; }
+        .icon-new { background: var(--purple-light); color: var(--purple); }
         .insight-text { font-size: 0.9rem; line-height: 1.4; }
         .insight-summary {
-            font-size: 0.95rem;
-            font-weight: 500;
-            padding-bottom: 0.75rem;
-            margin-bottom: 0.5rem;
-            border-bottom: 1px solid var(--gray-light);
+            font-size: 0.95rem; font-weight: 500; padding-bottom: 0.75rem;
+            margin-bottom: 0.5rem; border-bottom: 1px solid var(--gray-light);
         }
 
         /* ── Modal ──────────────────────────────────────── */
         .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(92,86,82,0.35);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; inset: 0;
+            background: rgba(92,86,82,0.35); z-index: 100;
+            align-items: center; justify-content: center;
         }
         .modal-overlay.active { display: flex; }
         .modal {
-            background: var(--white);
-            border-radius: 16px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 480px;
+            background: var(--white); border-radius: 16px; padding: 2rem;
+            width: 90%; max-width: 520px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-            max-height: 90vh;
-            overflow-y: auto;
+            max-height: 90vh; overflow-y: auto;
         }
-        .modal h2 { font-size: 1.15rem; margin-bottom: 1.25rem; color: var(--gray-dark); }
+        .modal-wide { max-width: 680px; }
+        .modal h2 { font-size: 1.15rem; margin-bottom: 1.25rem; }
         .form-group { margin-bottom: 1rem; }
         .form-group label {
-            display: block;
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: var(--gray);
-            margin-bottom: 0.3rem;
+            display: block; font-size: 0.8rem; font-weight: 500;
+            color: var(--gray); margin-bottom: 0.3rem;
         }
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 0.55rem 0.75rem;
-            border: 1px solid var(--gray-light);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            color: var(--gray-dark);
-            background: var(--beige);
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 0.55rem 0.75rem;
+            border: 1px solid var(--gray-light); border-radius: 8px;
+            font-size: 0.9rem; color: var(--gray-dark); background: var(--beige);
+            font-family: inherit;
         }
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--pink);
+        .form-group textarea { resize: vertical; min-height: 120px; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: var(--pink);
             box-shadow: 0 0 0 3px rgba(212,165,165,0.2);
         }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
         .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
 
+        /* ── Statement preview table ────────────────────── */
+        .preview-table { margin-top: 1rem; max-height: 300px; overflow-y: auto; }
+        .preview-table table { font-size: 0.85rem; }
+        .preview-table td { padding: 0.4rem 0.5rem; }
+        .preview-table select {
+            padding: 0.2rem 0.4rem; font-size: 0.8rem;
+            border: 1px solid var(--gray-light); border-radius: 4px;
+            background: var(--white);
+        }
+        .preview-summary {
+            padding: 0.75rem; background: var(--beige); border-radius: 8px;
+            margin-top: 0.75rem; font-size: 0.9rem;
+        }
+
         .period-bar {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
+            display: flex; align-items: center; gap: 1rem;
+            margin-bottom: 1.5rem; flex-wrap: wrap;
         }
         .period-bar select {
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--gray-light);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            background: var(--white);
-            color: var(--gray-dark);
+            padding: 0.5rem 1rem; border: 1px solid var(--gray-light);
+            border-radius: 8px; font-size: 0.9rem;
+            background: var(--white); color: var(--gray-dark);
         }
-
         .progress-bar {
-            width: 100%;
-            height: 10px;
-            background: var(--gray-light);
-            border-radius: 5px;
-            overflow: hidden;
-            margin-top: 0.5rem;
+            width: 100%; height: 10px; background: var(--gray-light);
+            border-radius: 5px; overflow: hidden; margin-top: 0.5rem;
         }
-        .progress-fill {
-            height: 100%;
-            border-radius: 5px;
-            transition: width 0.4s ease;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1rem;
-            color: var(--gray);
-        }
+        .progress-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease; }
+        .empty-state { text-align: center; padding: 3rem 1rem; color: var(--gray); }
         .empty-state p { margin-bottom: 1rem; }
-
         @media (max-width: 640px) {
             header { padding: 1rem; flex-direction: column; gap: 0.75rem; }
             .container { padding: 1rem; }
@@ -287,11 +227,9 @@
 <div class="container">
     <div class="period-bar">
         <select id="periodSelect" onchange="loadPeriod()">
-            <option value="">Seleccioná un mes...</option>
+            <option value="">Selecciona un mes...</option>
         </select>
-        <button class="btn btn-sm btn-secondary" onclick="seedDefaults()" id="btnSeed" style="display:none">
-            Cargar gastos fijos
-        </button>
+        <button class="btn btn-sm btn-secondary" onclick="seedDefaults()" id="btnSeed" style="display:none">Cargar gastos fijos</button>
         <span id="rateDisplay" style="font-size:0.85rem;color:var(--gray)"></span>
     </div>
 
@@ -310,13 +248,11 @@
         <div class="card">
             <div class="card-label">Balance</div>
             <div class="card-value" id="balance">$0</div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="balanceBar" style="width:0%"></div>
-            </div>
+            <div class="progress-bar"><div class="progress-fill" id="balanceBar" style="width:0%"></div></div>
             <div class="card-sub" id="balancePct"></div>
         </div>
         <div class="card">
-            <div class="card-label">Dólar blue</div>
+            <div class="card-label">Dolar blue</div>
             <div class="card-value text-pink" id="blueRate">$0</div>
             <div class="card-sub">
                 <a href="#" onclick="editRate(); return false" style="color:var(--pink-dark);text-decoration:none">editar</a>
@@ -326,9 +262,7 @@
 
     <!-- Insights -->
     <div class="insights-section" id="insightsSection" style="display:none">
-        <div class="section-header">
-            <h2 class="section-title">Análisis del mes</h2>
-        </div>
+        <div class="section-header"><h2 class="section-title">Analisis del mes</h2></div>
         <div class="insight-summary" id="insightSummary"></div>
         <div id="insightsList"></div>
     </div>
@@ -338,6 +272,7 @@
         <div class="section-header">
             <h2 class="section-title">Movimientos</h2>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                <button class="btn btn-purple btn-sm" onclick="openStatementModal()">Cargar resumen TC</button>
                 <button class="btn btn-accent btn-sm" onclick="openCardModal()">+ Compra en cuotas</button>
                 <button class="btn btn-primary btn-sm" onclick="openTxnModal()">+ Agregar</button>
             </div>
@@ -345,8 +280,8 @@
         <table>
             <thead>
                 <tr>
-                    <th>Descripción</th>
-                    <th>Categoría</th>
+                    <th>Descripcion</th>
+                    <th>Categoria</th>
                     <th>Monto</th>
                     <th>Tipo</th>
                     <th></th>
@@ -357,22 +292,18 @@
     </div>
 
     <div class="empty-state" id="emptyState">
-        <p>Creá tu primer mes para empezar a organizar tus finanzas</p>
+        <p>Crea tu primer mes para empezar a organizar tus finanzas</p>
         <button class="btn btn-primary" onclick="openPeriodModal()">Crear mes</button>
     </div>
 </div>
 
-<!-- New Period Modal -->
+<!-- Period Modal -->
 <div class="modal-overlay" id="periodModal">
     <div class="modal">
-        <h2>Nuevo período mensual</h2>
+        <h2>Nuevo periodo mensual</h2>
         <div class="form-row">
-            <div class="form-group">
-                <label>Año</label>
-                <input type="number" id="pYear" value="2026">
-            </div>
-            <div class="form-group">
-                <label>Mes</label>
+            <div class="form-group"><label>Ano</label><input type="number" id="pYear" value="2026"></div>
+            <div class="form-group"><label>Mes</label>
                 <select id="pMonth">
                     <option value="1">Enero</option><option value="2">Febrero</option>
                     <option value="3">Marzo</option><option value="4" selected>Abril</option>
@@ -383,8 +314,7 @@
                 </select>
             </div>
         </div>
-        <div class="form-group">
-            <label>Cotización dólar blue (ARS)</label>
+        <div class="form-group"><label>Cotizacion dolar blue (ARS)</label>
             <input type="number" id="pRate" value="1350" step="10">
         </div>
         <div class="modal-actions">
@@ -394,52 +324,32 @@
     </div>
 </div>
 
-<!-- New Transaction Modal -->
+<!-- Transaction Modal -->
 <div class="modal-overlay" id="txnModal">
     <div class="modal">
         <h2>Nuevo movimiento</h2>
-        <div class="form-group">
-            <label>Descripción</label>
+        <div class="form-group"><label>Descripcion</label>
             <input type="text" id="tDesc" placeholder="Ej: Supermercado">
         </div>
         <div class="form-row">
-            <div class="form-group">
-                <label>Monto</label>
-                <input type="number" id="tAmount" step="0.01">
-            </div>
-            <div class="form-group">
-                <label>Moneda</label>
-                <select id="tCurrency">
-                    <option value="ARS">ARS</option>
-                    <option value="USD">USD</option>
-                </select>
+            <div class="form-group"><label>Monto</label><input type="number" id="tAmount" step="0.01"></div>
+            <div class="form-group"><label>Moneda</label>
+                <select id="tCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select>
             </div>
         </div>
         <div class="form-row">
-            <div class="form-group">
-                <label>Tipo</label>
-                <select id="tType">
-                    <option value="expense">Gasto</option>
-                    <option value="income">Ingreso</option>
-                </select>
+            <div class="form-group"><label>Tipo</label>
+                <select id="tType"><option value="expense">Gasto</option><option value="income">Ingreso</option></select>
             </div>
-            <div class="form-group">
-                <label>Categoría</label>
+            <div class="form-group"><label>Categoria</label>
                 <select id="tCategory" onchange="toggleSubcategory()"></select>
             </div>
         </div>
         <div class="form-group" id="subcategoryGroup" style="display:none">
-            <label>Subcategoría tarjeta</label>
-            <select id="tSubcategory"></select>
+            <label>Subcategoria tarjeta</label><select id="tSubcategory"></select>
         </div>
-        <div class="form-group">
-            <label>Fecha</label>
-            <input type="date" id="tDate">
-        </div>
-        <div class="form-group">
-            <label>Notas</label>
-            <input type="text" id="tNotes" placeholder="Opcional">
-        </div>
+        <div class="form-group"><label>Fecha</label><input type="date" id="tDate"></div>
+        <div class="form-group"><label>Notas</label><input type="text" id="tNotes" placeholder="Opcional"></div>
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeTxnModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="saveTxn()">Guardar</button>
@@ -447,37 +357,27 @@
     </div>
 </div>
 
-<!-- Card Purchase Modal (Cuotas) -->
+<!-- Card Purchase Modal -->
 <div class="modal-overlay" id="cardModal">
     <div class="modal">
         <h2>Compra en cuotas con tarjeta</h2>
-        <div class="form-group">
-            <label>Descripción</label>
+        <div class="form-group"><label>Descripcion</label>
             <input type="text" id="cDesc" placeholder="Ej: Zapatillas Nike">
         </div>
-        <div class="form-group">
-            <label>Monto total de la compra</label>
+        <div class="form-group"><label>Monto total de la compra</label>
             <input type="number" id="cAmount" step="0.01" placeholder="Ej: 250000">
         </div>
         <div class="form-row">
-            <div class="form-group">
-                <label>Cuota actual</label>
-                <input type="number" id="cCurrent" min="1" value="1" placeholder="Ej: 3">
+            <div class="form-group"><label>Cuota actual</label>
+                <input type="number" id="cCurrent" min="1" value="1">
             </div>
-            <div class="form-group">
-                <label>Total de cuotas</label>
-                <input type="number" id="cTotal" min="1" value="3" placeholder="Ej: 6">
+            <div class="form-group"><label>Total de cuotas</label>
+                <input type="number" id="cTotal" min="1" value="3">
             </div>
         </div>
-        <div class="form-group">
-            <label>Categoría</label>
-            <select id="cSubcategory"></select>
-        </div>
-        <div class="form-group">
-            <label>Fecha de compra</label>
-            <input type="date" id="cDate">
-        </div>
-        <div style="background:var(--beige);border-radius:8px;padding:0.75rem;margin-top:0.5rem" id="cuotaPreview">
+        <div class="form-group"><label>Categoria</label><select id="cSubcategory"></select></div>
+        <div class="form-group"><label>Fecha</label><input type="date" id="cDate"></div>
+        <div style="background:var(--beige);border-radius:8px;padding:0.75rem;margin-top:0.5rem">
             <div style="font-size:0.8rem;color:var(--gray)">Vista previa</div>
             <div id="cuotaPreviewText" style="font-size:0.85rem;margin-top:0.3rem"></div>
         </div>
@@ -488,17 +388,51 @@
     </div>
 </div>
 
+<!-- Statement Import Modal -->
+<div class="modal-overlay" id="statementModal">
+    <div class="modal modal-wide">
+        <h2>Cargar resumen de tarjeta de credito</h2>
+        <div class="form-group">
+            <label>Pega el resumen de tu tarjeta de credito</label>
+            <textarea id="stmtText" placeholder="Ejemplo:
+SPOTIFY                    $2.500,00
+MERCADOLIBRE               $45.000,00
+ZARA                       $89.000,00
+CARREFOUR      15/03       $32.500,00
+YPF ESTACION               $28.000,00"></textarea>
+        </div>
+        <div class="modal-actions" style="margin-top:0.5rem;margin-bottom:0">
+            <button class="btn btn-secondary btn-sm" onclick="parseStatement()">Analizar texto</button>
+        </div>
+
+        <div id="stmtPreview" style="display:none">
+            <div class="preview-table">
+                <table>
+                    <thead>
+                        <tr><th>Descripcion</th><th>Monto</th><th>Subcategoria</th><th></th></tr>
+                    </thead>
+                    <tbody id="stmtPreviewBody"></tbody>
+                </table>
+            </div>
+            <div class="preview-summary" id="stmtSummary"></div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeStatementModal()">Cancelar</button>
+            <button class="btn btn-purple" onclick="importStatement()" id="btnImport" style="display:none">Importar todos</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const MONTHS = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 let categories = {};
 let cardSubcategories = {};
 let currentPeriodId = null;
+let parsedLines = [];
 
 async function api(path, opts = {}) {
-    const res = await fetch('/api' + path, {
-        headers: { 'Content-Type': 'application/json' },
-        ...opts,
-    });
+    const res = await fetch('/api' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
     if (res.status === 204) return null;
     if (!res.ok) {
         const err = await res.json();
@@ -509,16 +443,13 @@ async function api(path, opts = {}) {
 }
 
 function fmt(n, currency = 'ARS') {
-    if (currency === 'USD') return 'US$ ' + n.toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 2});
-    return '$ ' + n.toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+    if (currency === 'USD') return 'US$ ' + n.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2});
+    return '$ ' + n.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
 }
 
 // ── Init ────────────────────────────────────────────────
 async function init() {
-    [categories, cardSubcategories] = await Promise.all([
-        api('/categories'),
-        api('/card-subcategories'),
-    ]);
+    [categories, cardSubcategories] = await Promise.all([api('/categories'), api('/card-subcategories')]);
     populateCategorySelect();
     populateCardSubcategorySelect();
     await loadPeriods();
@@ -529,60 +460,42 @@ function populateCategorySelect() {
     sel.innerHTML = '';
     for (const [key, label] of Object.entries(categories)) {
         const opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = label;
-        sel.appendChild(opt);
+        opt.value = key; opt.textContent = label; sel.appendChild(opt);
     }
 }
 
 function populateCardSubcategorySelect() {
-    // For transaction modal
-    const sel = document.getElementById('tSubcategory');
-    sel.innerHTML = '';
-    // For card purchase modal
-    const sel2 = document.getElementById('cSubcategory');
-    sel2.innerHTML = '';
-    for (const [key, label] of Object.entries(cardSubcategories)) {
-        let opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = label;
-        sel.appendChild(opt);
-
-        opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = label;
-        sel2.appendChild(opt);
-    }
+    ['tSubcategory', 'cSubcategory'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        for (const [key, label] of Object.entries(cardSubcategories)) {
+            const opt = document.createElement('option');
+            opt.value = key; opt.textContent = label; sel.appendChild(opt);
+        }
+    });
 }
 
 function toggleSubcategory() {
-    const cat = document.getElementById('tCategory').value;
-    document.getElementById('subcategoryGroup').style.display = cat === 'tarjeta' ? '' : 'none';
+    document.getElementById('subcategoryGroup').style.display =
+        document.getElementById('tCategory').value === 'tarjeta' ? '' : 'none';
 }
 
 async function loadPeriods() {
     const periods = await api('/periods');
     const sel = document.getElementById('periodSelect');
-    sel.innerHTML = '<option value="">Seleccioná un mes...</option>';
+    sel.innerHTML = '<option value="">Selecciona un mes...</option>';
     for (const p of periods) {
         const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = `${MONTHS[p.month]} ${p.year}`;
-        sel.appendChild(opt);
+        opt.value = p.id; opt.textContent = `${MONTHS[p.month]} ${p.year}`; sel.appendChild(opt);
     }
-    if (periods.length > 0) {
-        sel.value = periods[0].id;
-        loadPeriod();
-    }
+    if (periods.length > 0) { sel.value = periods[0].id; loadPeriod(); }
     document.getElementById('emptyState').style.display = periods.length === 0 ? '' : 'none';
 }
 
 async function loadPeriod() {
     const id = document.getElementById('periodSelect').value;
     if (!id) {
-        document.getElementById('summaryCards').style.display = 'none';
-        document.getElementById('txnSection').style.display = 'none';
-        document.getElementById('insightsSection').style.display = 'none';
+        ['summaryCards','txnSection','insightsSection'].forEach(s => document.getElementById(s).style.display = 'none');
         return;
     }
     currentPeriodId = parseInt(id);
@@ -597,25 +510,19 @@ async function loadPeriod() {
 
 function renderSummary(s) {
     document.getElementById('totalIncome').textContent = fmt(s.total_income_ars_converted);
-    document.getElementById('incomeDetail').textContent =
-        `${fmt(s.total_income_usd, 'USD')} + ${fmt(s.total_income_ars)}`;
+    document.getElementById('incomeDetail').textContent = `${fmt(s.total_income_usd, 'USD')} + ${fmt(s.total_income_ars)}`;
     document.getElementById('totalExpenses').textContent = fmt(s.total_expenses_ars_converted);
-    document.getElementById('expenseDetail').textContent =
-        `${fmt(s.total_expenses_usd, 'USD')} + ${fmt(s.total_expenses_ars)}`;
-
+    document.getElementById('expenseDetail').textContent = `${fmt(s.total_expenses_usd, 'USD')} + ${fmt(s.total_expenses_ars)}`;
     const bal = s.balance_ars;
     const balEl = document.getElementById('balance');
     balEl.textContent = fmt(bal);
     balEl.className = 'card-value ' + (bal >= 0 ? 'text-green' : 'text-red');
-
     const pct = s.total_income_ars_converted > 0
-        ? Math.min(100, (s.total_expenses_ars_converted / s.total_income_ars_converted) * 100)
-        : 0;
+        ? Math.min(100, (s.total_expenses_ars_converted / s.total_income_ars_converted) * 100) : 0;
     const bar = document.getElementById('balanceBar');
     bar.style.width = pct + '%';
     bar.style.background = pct > 90 ? 'var(--red-dark)' : pct > 70 ? 'var(--pink)' : 'var(--green-soft)';
     document.getElementById('balancePct').textContent = `${pct.toFixed(0)}% de ingresos gastados`;
-
     document.getElementById('blueRate').textContent = fmt(s.period.blue_dollar_rate);
     document.getElementById('rateDisplay').textContent = `1 USD = ${fmt(s.period.blue_dollar_rate)}`;
 }
@@ -623,62 +530,92 @@ function renderSummary(s) {
 function renderTransactions(txns) {
     const tbody = document.getElementById('txnBody');
     if (txns.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:2rem">Sin movimientos. Usá "Cargar gastos fijos" para comenzar.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:2rem">Sin movimientos.</td></tr>';
         return;
     }
-    tbody.innerHTML = txns.map(t => {
-        const subLabel = t.subcategory ? (cardSubcategories[t.subcategory] || t.subcategory) : '';
-        const cuotaBadge = t.installment_number
-            ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>`
-            : '';
-        const subBadge = subLabel
-            ? `<span class="badge badge-sub">${subLabel}</span>`
-            : '';
-        return `
-        <tr>
-            <td>
-                ${t.description}
-                ${t.is_fixed ? '<span class="badge badge-fixed">fijo</span>' : ''}
-                ${cuotaBadge}
+
+    // Separate card and non-card transactions
+    const cardTxns = txns.filter(t => t.category === 'tarjeta');
+    const otherTxns = txns.filter(t => t.category !== 'tarjeta');
+    const cardTotal = cardTxns.reduce((sum, t) => sum + t.amount, 0);
+
+    let html = '';
+
+    // Render non-card transactions
+    html += otherTxns.map(t => renderTxnRow(t)).join('');
+
+    // Render card section as collapsible group
+    if (cardTxns.length > 0) {
+        html += `
+        <tr class="tc-row" onclick="toggleTC()">
+            <td colspan="2">
+                <span class="tc-toggle" id="tcToggle">&#9654;</span>
+                Tarjeta de credito
+                <span class="tc-count">${cardTxns.length} consumo${cardTxns.length > 1 ? 's' : ''}</span>
             </td>
-            <td>
-                ${categories[t.category] || t.category}
-                ${subBadge}
-            </td>
-            <td class="${t.transaction_type === 'income' ? 'amount-income' : 'amount-expense'}">
-                ${t.transaction_type === 'income' ? '+' : '-'} ${fmt(t.amount, t.currency)}
-            </td>
-            <td><span class="badge ${t.transaction_type === 'income' ? 'badge-income' : 'badge-expense'}">${t.transaction_type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
-            <td><button class="btn btn-danger btn-sm" onclick="deleteTxn(${t.id})">x</button></td>
+            <td class="amount-expense">- ${fmt(cardTotal)}</td>
+            <td><span class="badge badge-expense">Gasto</span></td>
+            <td></td>
         </tr>`;
-    }).join('');
+        html += cardTxns.map(t => `
+        <tr class="tc-detail hidden">
+            <td style="padding-left:2.5rem">
+                ${t.description}
+                ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}
+            </td>
+            <td>${t.subcategory ? (cardSubcategories[t.subcategory] || t.subcategory) : 'Otros'}</td>
+            <td class="amount-expense">- ${fmt(t.amount, t.currency)}</td>
+            <td></td>
+            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteTxn(${t.id})">x</button></td>
+        </tr>`).join('');
+    }
+
+    tbody.innerHTML = html;
+}
+
+function renderTxnRow(t) {
+    const subLabel = t.subcategory ? (cardSubcategories[t.subcategory] || t.subcategory) : '';
+    return `
+    <tr>
+        <td>
+            ${t.description}
+            ${t.is_fixed ? '<span class="badge badge-fixed">fijo</span>' : ''}
+            ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}
+        </td>
+        <td>${categories[t.category] || t.category} ${subLabel ? `<span class="badge badge-sub">${subLabel}</span>` : ''}</td>
+        <td class="${t.transaction_type === 'income' ? 'amount-income' : 'amount-expense'}">
+            ${t.transaction_type === 'income' ? '+' : '-'} ${fmt(t.amount, t.currency)}
+        </td>
+        <td><span class="badge ${t.transaction_type === 'income' ? 'badge-income' : 'badge-expense'}">${t.transaction_type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteTxn(${t.id})">x</button></td>
+    </tr>`;
+}
+
+function toggleTC() {
+    const rows = document.querySelectorAll('.tc-detail');
+    const toggle = document.getElementById('tcToggle');
+    const isHidden = rows[0]?.classList.contains('hidden');
+    rows.forEach(r => r.classList.toggle('hidden'));
+    toggle.classList.toggle('open', isHidden);
 }
 
 // ── Insights ────────────────────────────────────────────
 async function loadInsights() {
     try {
         const data = await api(`/insights/${currentPeriodId}`);
-        const section = document.getElementById('insightsSection');
         document.getElementById('insightSummary').textContent = data.summary;
-
         const list = document.getElementById('insightsList');
         if (data.insights.length === 0) {
-            list.innerHTML = '<div style="color:var(--gray);font-size:0.85rem;padding:0.5rem 0">Agregá movimientos para ver el análisis.</div>';
+            list.innerHTML = '<div style="color:var(--gray);font-size:0.85rem;padding:0.5rem 0">Agrega movimientos para ver el analisis.</div>';
         } else {
-            const iconMap = { up: ['icon-up', '↑'], down: ['icon-down', '↓'], stable: ['icon-stable', '='], new: ['icon-new', '★'] };
+            const iconMap = { up: ['icon-up','???'], down: ['icon-down','???'], stable: ['icon-stable','='], new: ['icon-new','*'] };
             list.innerHTML = data.insights.map(i => {
                 const [cls, icon] = iconMap[i.direction] || iconMap.stable;
-                return `
-                <div class="insight-item">
-                    <div class="insight-icon ${cls}">${icon}</div>
-                    <div class="insight-text">${i.message}</div>
-                </div>`;
+                return `<div class="insight-item"><div class="insight-icon ${cls}">${icon}</div><div class="insight-text">${i.message}</div></div>`;
             }).join('');
         }
-        section.style.display = '';
-    } catch (e) {
-        document.getElementById('insightsSection').style.display = 'none';
-    }
+        document.getElementById('insightsSection').style.display = '';
+    } catch { document.getElementById('insightsSection').style.display = 'none'; }
 }
 
 // ── Period Modal ────────────────────────────────────────
@@ -688,11 +625,10 @@ async function createPeriod() {
     const year = parseInt(document.getElementById('pYear').value);
     const month = parseInt(document.getElementById('pMonth').value);
     const rate = parseFloat(document.getElementById('pRate').value);
-    if (!rate || rate <= 0) { alert('Ingresá una cotización válida'); return; }
+    if (!rate || rate <= 0) { alert('Ingresa una cotizacion valida'); return; }
     try {
         await api('/periods', { method: 'POST', body: JSON.stringify({ year, month, blue_dollar_rate: rate, notes: '' }) });
-        closePeriodModal();
-        await loadPeriods();
+        closePeriodModal(); await loadPeriods();
     } catch (e) { alert('Error: ' + e.message); }
 }
 
@@ -713,34 +649,25 @@ async function saveTxn() {
     const desc = document.getElementById('tDesc').value.trim();
     const amount = parseFloat(document.getElementById('tAmount').value);
     const dateVal = document.getElementById('tDate').value;
-    if (!desc) { alert('Completá la descripción'); return; }
-    if (!amount || isNaN(amount) || amount <= 0) { alert('Ingresá un monto válido'); return; }
-    if (!dateVal) { alert('Seleccioná una fecha'); return; }
-
+    if (!desc) { alert('Completa la descripcion'); return; }
+    if (!amount || isNaN(amount) || amount <= 0) { alert('Ingresa un monto valido'); return; }
+    if (!dateVal) { alert('Selecciona una fecha'); return; }
     const cat = document.getElementById('tCategory').value;
-    const data = {
-        period_id: currentPeriodId,
-        description: desc,
-        amount: amount,
-        currency: document.getElementById('tCurrency').value,
-        transaction_type: document.getElementById('tType').value,
-        category: cat,
-        subcategory: cat === 'tarjeta' ? document.getElementById('tSubcategory').value : null,
-        date: dateVal,
-        notes: document.getElementById('tNotes').value,
-        is_fixed: false,
-    };
     try {
-        await api('/transactions', { method: 'POST', body: JSON.stringify(data) });
-        closeTxnModal();
-        await loadPeriod();
+        await api('/transactions', { method: 'POST', body: JSON.stringify({
+            period_id: currentPeriodId, description: desc, amount,
+            currency: document.getElementById('tCurrency').value,
+            transaction_type: document.getElementById('tType').value,
+            category: cat,
+            subcategory: cat === 'tarjeta' ? document.getElementById('tSubcategory').value : null,
+            date: dateVal, notes: document.getElementById('tNotes').value, is_fixed: false,
+        })});
+        closeTxnModal(); await loadPeriod();
     } catch (e) { alert('Error al guardar: ' + e.message); }
 }
-
 async function deleteTxn(id) {
-    if (!confirm('¿Eliminar este movimiento?')) return;
-    await api(`/transactions/${id}`, { method: 'DELETE' });
-    await loadPeriod();
+    if (!confirm('Eliminar este movimiento?')) return;
+    await api(`/transactions/${id}`, { method: 'DELETE' }); await loadPeriod();
 }
 
 // ── Card Purchase Modal ─────────────────────────────────
@@ -755,7 +682,6 @@ function openCardModal() {
     document.getElementById('cardModal').classList.add('active');
 }
 function closeCardModal() { document.getElementById('cardModal').classList.remove('active'); }
-
 function updateCuotaPreview() {
     const amount = parseFloat(document.getElementById('cAmount').value) || 0;
     const current = parseInt(document.getElementById('cCurrent').value) || 1;
@@ -763,65 +689,113 @@ function updateCuotaPreview() {
     const cuotaAmt = total > 0 ? Math.round(amount / total) : 0;
     const remaining = total - current + 1;
     document.getElementById('cuotaPreviewText').textContent =
-        `${remaining} cuota${remaining > 1 ? 's' : ''} de ${fmt(cuotaAmt)} se cargarán desde este mes`;
+        `${remaining} cuota${remaining > 1 ? 's' : ''} de ${fmt(cuotaAmt)} se cargaran desde este mes`;
 }
-
-// Live preview
-['cAmount', 'cCurrent', 'cTotal'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', updateCuotaPreview);
-});
+['cAmount','cCurrent','cTotal'].forEach(id => document.getElementById(id)?.addEventListener('input', updateCuotaPreview));
 
 async function saveCardPurchase() {
     const desc = document.getElementById('cDesc').value.trim();
     const amount = parseFloat(document.getElementById('cAmount').value);
     const current = parseInt(document.getElementById('cCurrent').value);
     const total = parseInt(document.getElementById('cTotal').value);
-    const dateVal = document.getElementById('cDate').value;
-
-    if (!desc) { alert('Completá la descripción'); return; }
-    if (!amount || amount <= 0) { alert('Ingresá el monto total'); return; }
-    if (!current || current < 1) { alert('La cuota actual debe ser al menos 1'); return; }
-    if (!total || total < 1) { alert('El total de cuotas debe ser al menos 1'); return; }
-    if (current > total) { alert('La cuota actual no puede ser mayor al total'); return; }
-
-    const data = {
-        description: desc,
-        total_amount: amount,
-        installment_current: current,
-        installments_total: total,
-        subcategory: document.getElementById('cSubcategory').value,
-        period_id: currentPeriodId,
-        date: dateVal || null,
-    };
+    if (!desc) { alert('Completa la descripcion'); return; }
+    if (!amount || amount <= 0) { alert('Ingresa el monto total'); return; }
+    if (!current || current < 1 || !total || total < 1 || current > total) { alert('Verifica las cuotas'); return; }
     try {
-        await api('/card-purchases', { method: 'POST', body: JSON.stringify(data) });
-        closeCardModal();
+        await api('/card-purchases', { method: 'POST', body: JSON.stringify({
+            description: desc, total_amount: amount,
+            installment_current: current, installments_total: total,
+            subcategory: document.getElementById('cSubcategory').value,
+            period_id: currentPeriodId,
+            date: document.getElementById('cDate').value || null,
+        })});
+        closeCardModal(); await loadPeriod();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ── Statement Import Modal ──────────────────────────────
+function openStatementModal() {
+    document.getElementById('stmtText').value = '';
+    document.getElementById('stmtPreview').style.display = 'none';
+    document.getElementById('btnImport').style.display = 'none';
+    parsedLines = [];
+    document.getElementById('statementModal').classList.add('active');
+}
+function closeStatementModal() { document.getElementById('statementModal').classList.remove('active'); }
+
+async function parseStatement() {
+    const text = document.getElementById('stmtText').value.trim();
+    if (!text) { alert('Pega el resumen de tu tarjeta'); return; }
+    try {
+        const data = await api('/statement/parse', {
+            method: 'POST',
+            body: JSON.stringify({ period_id: currentPeriodId, text }),
+        });
+        parsedLines = data.lines;
+        if (data.count === 0) {
+            alert('No se pudieron detectar consumos. Proba con otro formato.');
+            return;
+        }
+        renderStatementPreview(data);
+        document.getElementById('stmtPreview').style.display = '';
+        document.getElementById('btnImport').style.display = '';
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+function renderStatementPreview(data) {
+    const tbody = document.getElementById('stmtPreviewBody');
+    tbody.innerHTML = data.lines.map((l, i) => {
+        const opts = Object.entries(cardSubcategories).map(([k,v]) =>
+            `<option value="${k}" ${k === l.subcategory ? 'selected' : ''}>${v}</option>`
+        ).join('');
+        return `<tr>
+            <td>${l.description}</td>
+            <td class="amount-expense">${fmt(l.amount)}</td>
+            <td><select onchange="parsedLines[${i}].subcategory=this.value">${opts}</select></td>
+            <td><button class="btn btn-danger btn-sm" onclick="removePreviewLine(${i})">x</button></td>
+        </tr>`;
+    }).join('');
+    document.getElementById('stmtSummary').innerHTML =
+        `<strong>${data.count} consumos</strong> por un total de <strong>${fmt(data.total)}</strong>`;
+}
+
+function removePreviewLine(idx) {
+    parsedLines.splice(idx, 1);
+    const total = parsedLines.reduce((s, l) => s + l.amount, 0);
+    renderStatementPreview({ lines: parsedLines, count: parsedLines.length, total });
+    if (parsedLines.length === 0) {
+        document.getElementById('stmtPreview').style.display = 'none';
+        document.getElementById('btnImport').style.display = 'none';
+    }
+}
+
+async function importStatement() {
+    if (parsedLines.length === 0) return;
+    if (!confirm(`Importar ${parsedLines.length} consumos de tarjeta?`)) return;
+    try {
+        await api('/statement/import', {
+            method: 'POST',
+            body: JSON.stringify({ period_id: currentPeriodId, lines: parsedLines }),
+        });
+        closeStatementModal();
         await loadPeriod();
     } catch (e) { alert('Error: ' + e.message); }
 }
 
-// ── Seed defaults ───────────────────────────────────────
+// ── Seed & Rate ─────────────────────────────────────────
 async function seedDefaults() {
-    if (!confirm('¿Cargar ingresos y gastos fijos del mes?')) return;
-    try {
-        await api(`/periods/${currentPeriodId}/seed-defaults`, { method: 'POST' });
-        await loadPeriod();
-    } catch (e) { alert('Error: ' + e.message); }
+    if (!confirm('Cargar ingresos y gastos fijos del mes?')) return;
+    try { await api(`/periods/${currentPeriodId}/seed-defaults`, { method: 'POST' }); await loadPeriod(); }
+    catch (e) { alert('Error: ' + e.message); }
 }
-
-// ── Edit rate ───────────────────────────────────────────
 async function editRate() {
-    const newRate = prompt('Nueva cotización dólar blue:');
-    if (!newRate) return;
-    await api(`/periods/${currentPeriodId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ blue_dollar_rate: parseFloat(newRate) }),
-    });
+    const r = prompt('Nueva cotizacion dolar blue:');
+    if (!r) return;
+    await api(`/periods/${currentPeriodId}`, { method: 'PATCH', body: JSON.stringify({ blue_dollar_rate: parseFloat(r) }) });
     await loadPeriod();
 }
 
 init();
 </script>
-
 </body>
 </html>

@@ -362,6 +362,61 @@ class TestInsights:
         assert any("EPEC" in m for m in msgs)
 
 
+class TestStatementParse:
+    def test_parse_argentine_format(self):
+        pid = create_test_period().json()["id"]
+        text = """SPOTIFY                    $2.500,00
+MERCADOLIBRE               $45.000,00
+ZARA                       $89.000,00"""
+        res = client.post("/api/statement/parse", json={"period_id": pid, "text": text})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["count"] == 3
+        assert data["total"] == 2500 + 45000 + 89000
+        # Check subcategory guessing
+        descs = {l["description"]: l["subcategory"] for l in data["lines"]}
+        assert descs["SPOTIFY"] == "entretenimiento"
+        assert descs["MERCADOLIBRE"] == "tecnologia"
+        assert descs["ZARA"] == "indumentaria"
+
+    def test_parse_with_dates(self):
+        pid = create_test_period().json()["id"]
+        text = "15/03  CARREFOUR  $32.500,00"
+        res = client.post("/api/statement/parse", json={"period_id": pid, "text": text})
+        data = res.json()
+        assert data["count"] == 1
+        assert data["lines"][0]["amount"] == 32500
+        assert data["lines"][0]["subcategory"] == "supermercado"
+
+    def test_parse_empty_lines_skipped(self):
+        pid = create_test_period().json()["id"]
+        text = "\n\nSPOTIFY  $2.500,00\n\n"
+        res = client.post("/api/statement/parse", json={"period_id": pid, "text": text})
+        assert res.json()["count"] == 1
+
+    def test_parse_no_matches(self):
+        pid = create_test_period().json()["id"]
+        res = client.post("/api/statement/parse", json={"period_id": pid, "text": "no numbers here"})
+        assert res.json()["count"] == 0
+
+
+class TestStatementImport:
+    def test_import_creates_transactions(self):
+        pid = create_test_period().json()["id"]
+        lines = [
+            {"description": "SPOTIFY", "amount": 2500, "subcategory": "entretenimiento", "date": ""},
+            {"description": "ZARA", "amount": 89000, "subcategory": "indumentaria", "date": ""},
+        ]
+        res = client.post("/api/statement/import", json={"period_id": pid, "lines": lines})
+        assert res.status_code == 201
+        assert res.json()["count"] == 2
+
+        txns = client.get(f"/api/transactions?period_id={pid}").json()
+        assert len(txns) == 2
+        assert all(t["category"] == "tarjeta" for t in txns)
+        assert all("Importado" in t["notes"] for t in txns)
+
+
 class TestDashboard:
     def test_dashboard_returns_html(self):
         res = client.get("/")

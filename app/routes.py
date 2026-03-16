@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date
@@ -22,6 +23,10 @@ from app.schemas import (
     CardPurchaseResponse,
     InsightItem,
     PeriodInsightsResponse,
+    StatementParseRequest,
+    StatementParseResponse,
+    StatementLinePreview,
+    StatementImportRequest,
 )
 
 router = APIRouter(prefix="/api")
@@ -541,3 +546,138 @@ def get_insights(period_id: int, db: Session = Depends(get_db)):
 
 def _fmt_ars(n: float) -> str:
     return f"${n:,.0f}".replace(",", ".")
+
+
+# ── Card Statement Import ────────────────────────────────────────────────────
+
+# Keyword-based subcategory guessing
+_SUBCATEGORY_KEYWORDS = {
+    "indumentaria": ["zara", "h&m", "nike", "adidas", "rapsodia", "kosiuko", "levis", "uniqlo", "forever", "ropa", "indumentaria", "asos", "shein", "mango"],
+    "supermercado": ["carrefour", "coto", "disco", "jumbo", "super", "vea", "changomas", "walmart"],
+    "restaurantes": ["restaurant", "pizz", "burger", "mcdon", "starbucks", "cafe", "bar ", "sushi", "rappi", "pedidosya", "ifood", "resto"],
+    "entretenimiento": ["spotify", "netflix", "disney", "hbo", "amazon prime", "steam", "playstation", "xbox", "cine", "teatro", "entrad"],
+    "salud": ["farmacia", "farmacity", "medic", "doctor", "salud", "osde", "swiss", "galeno", "hospital", "optic"],
+    "transporte": ["uber", "cabify", "ypf", "shell", "axion", "peaje", "estacion", "nafta", "combusti", "sube"],
+    "hogar": ["easy", "sodimac", "mueble", "decoracion", "ferret", "limpieza", "hogar"],
+    "tecnologia": ["mercadolibre", "apple", "samsung", "comput", "notebook", "celular", "tecno", "garbarino", "fravega", "musimundo"],
+    "educacion": ["udemy", "coursera", "libro", "educacion", "universidad", "escuela", "curso"],
+    "viajes": ["booking", "airbnb", "despegar", "hotel", "vuelo", "aerolinea", "avion", "latam", "flybondi"],
+}
+
+
+def _guess_subcategory(description: str) -> str:
+    desc_lower = description.lower()
+    for subcat, keywords in _SUBCATEGORY_KEYWORDS.items():
+        for kw in keywords:
+            if kw in desc_lower:
+                return subcat
+    return "otros"
+
+
+def _parse_statement_line(line: str) -> StatementLinePreview | None:
+    """Try to parse a single line from a credit card statement.
+
+    Supports common formats:
+      - "DESCRIPCION    $1.234,56" or "$1234.56"
+      - "DESCRIPCION    1.234,56" or "1234.56"
+      - "15/03  DESCRIPCION  $1.234,56"
+      - "DESCRIPCION  15/03/2026  1.234,56"
+      - Tab or multiple-space separated
+    """
+    line = line.strip()
+    if not line:
+        return None
+
+    # Try to find a monetary amount at the end of the line
+    # Argentine format: $1.234.567,89 or 1.234,56
+    # Also handle: $1234.56 or 1234.56
+    patterns = [
+        # Argentine: $1.234.567,89 or 1.234.567,89
+        r'[\$]?\s*([\d]{1,3}(?:\.[\d]{3})*,[\d]{2})\s*$',
+        # Simple: $1234.56 or 1234.56
+        r'[\$]?\s*([\d]+\.[\d]{2})\s*$',
+        # Just a number: $123456 or 123456
+        r'[\$]?\s*([\d]+)\s*$',
+    ]
+
+    amount = None
+    desc_part = line
+
+    for pat in patterns:
+        m = re.search(pat, line)
+        if m:
+            amount_str = m.group(1)
+            desc_part = line[:m.start()].strip()
+            # Parse argentine format (dots as thousands, comma as decimal)
+            if ',' in amount_str and '.' in amount_str:
+                amount = float(amount_str.replace('.', '').replace(',', '.'))
+            elif ',' in amount_str:
+                amount = float(amount_str.replace(',', '.'))
+            else:
+                amount = float(amount_str)
+            break
+
+    if amount is None or amount <= 0:
+        return None
+
+    # Clean up description: remove date patterns like 15/03 or 15/03/2026
+    desc_clean = re.sub(r'\d{2}/\d{2}(/\d{2,4})?\s*', '', desc_part).strip()
+    # Remove trailing separators
+    desc_clean = desc_clean.rstrip('-–—').strip()
+    # Remove multiple spaces
+    desc_clean = re.sub(r'\s+', ' ', desc_clean).strip()
+
+    if not desc_clean:
+        desc_clean = "Consumo tarjeta"
+
+    return StatementLinePreview(
+        description=desc_clean,
+        amount=amount,
+        subcategory=_guess_subcategory(desc_clean),
+        date="",
+    )
+
+
+@router.post("/statement/parse", response_model=StatementParseResponse)
+def parse_statement(data: StatementParseRequest):
+    """Parse pasted credit card statement text into structured lines."""
+    lines = data.text.strip().split('\n')
+    parsed = []
+    for line in lines:
+        result = _parse_statement_line(line)
+        if result:
+            parsed.append(result)
+    return StatementParseResponse(
+        lines=parsed,
+        total=sum(l.amount for l in parsed),
+        count=len(parsed),
+    )
+
+
+@router.post("/statement/import", status_code=201)
+def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)):
+    """Import parsed statement lines as transactions."""
+    period = db.query(MonthlyPeriod).filter(MonthlyPeriod.id == data.period_id).first()
+    if not period:
+        raise HTTPException(404, "Period not found")
+
+    created = 0
+    for line in data.lines:
+        txn_date = date.fromisoformat(line.date) if line.date else date(period.year, period.month, 1)
+        txn = Transaction(
+            period_id=data.period_id,
+            description=line.description,
+            amount=line.amount,
+            currency="ARS",
+            transaction_type="expense",
+            category="tarjeta",
+            subcategory=line.subcategory,
+            date=txn_date,
+            is_fixed=False,
+            notes="Importado desde resumen de tarjeta",
+        )
+        db.add(txn)
+        created += 1
+
+    db.commit()
+    return {"message": f"Se importaron {created} consumos de tarjeta", "count": created}
