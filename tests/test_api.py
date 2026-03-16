@@ -399,6 +399,37 @@ ZARA                       $89.000,00"""
         res = client.post("/api/statement/parse", json={"period_id": pid, "text": "no numbers here"})
         assert res.json()["count"] == 0
 
+    def test_parse_detects_cuotas(self):
+        pid = create_test_period().json()["id"]
+        text = """ZARA C 03/05                $25.000,00
+NIKE CUOTA 2/6              $15.000,00
+SAMSUNG (1/12)              $45.000,00"""
+        res = client.post("/api/statement/parse", json={"period_id": pid, "text": text})
+        data = res.json()
+        assert data["count"] == 3
+        lines = {l["description"]: l for l in data["lines"]}
+        assert lines["ZARA"]["installment_current"] == 3
+        assert lines["ZARA"]["installment_total"] == 5
+        assert lines["NIKE"]["installment_current"] == 2
+        assert lines["NIKE"]["installment_total"] == 6
+        assert lines["SAMSUNG"]["installment_current"] == 1
+        assert lines["SAMSUNG"]["installment_total"] == 12
+
+    def test_parse_real_format_with_zeta(self):
+        """Test with real Argentine card statement format."""
+        pid = create_test_period().json()["id"]
+        text = """MERPAGO*MERCADOLIBRE          06/06     $10.725,00
+MERPAGO*MULHAUS               03/06     $22.533,33
+RAPPI ARG CVV                           $9.990,00
+ZETA ENE/26                   03/03     $98.941,06"""
+        res = client.post("/api/statement/parse", json={"period_id": pid, "text": text})
+        data = res.json()
+        assert data["count"] == 4
+        # MERPAGO*MERCADOLIBRE 06/06 should detect cuota 6/6
+        meli = next(l for l in data["lines"] if "MERCADOLIBRE" in l["description"])
+        assert meli["installment_current"] == 6
+        assert meli["installment_total"] == 6
+
 
 class TestStatementImport:
     def test_import_creates_transactions(self):
@@ -415,6 +446,28 @@ class TestStatementImport:
         assert len(txns) == 2
         assert all(t["category"] == "tarjeta" for t in txns)
         assert all("Importado" in t["notes"] for t in txns)
+
+    def test_import_cuotas_creates_future_installments(self):
+        pid = create_test_period(year=2026, month=4).json()["id"]
+        lines = [
+            {"description": "ZARA", "amount": 25000, "subcategory": "indumentaria", "date": "",
+             "installment_current": 3, "installment_total": 5},
+            {"description": "SPOTIFY", "amount": 2500, "subcategory": "entretenimiento", "date": ""},
+        ]
+        res = client.post("/api/statement/import", json={"period_id": pid, "lines": lines})
+        assert res.status_code == 201
+        data = res.json()
+        assert data["installment_purchases"] == 1
+        # ZARA: cuotas 3,4,5 = 3 txns + SPOTIFY = 1 txn = 4 total
+        assert data["count"] == 4
+
+        # Check April has cuota 3 + spotify
+        txns_april = client.get(f"/api/transactions?period_id={pid}").json()
+        assert len(txns_april) == 2
+
+        # May and June should have been created with cuotas 4 and 5
+        periods = client.get("/api/periods").json()
+        assert len(periods) == 3  # April, May, June
 
 
 class TestDashboard:

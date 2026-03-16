@@ -154,6 +154,8 @@ class StatementLinePreview(BaseModel):
     amount: float
     subcategory: str
     date: str
+    installment_current: Optional[int] = None  # e.g. 3
+    installment_total: Optional[int] = None     # e.g. 5
 
 
 class StatementParseRequest(BaseModel):

@@ -620,7 +620,29 @@ def _parse_statement_line(line: str) -> StatementLinePreview | None:
     if amount is None or amount <= 0:
         return None
 
-    # Clean up description: remove date patterns like 15/03 or 15/03/2026
+    # Detect installment patterns BEFORE cleaning dates
+    # Patterns: "C 03/05", "CUOTA 3/6", "CTA 2/12", "03/05 C", "(3/5)"
+    # Also bare "NN/NN" where second number is <= 48 (likely cuota, not date)
+    installment_current = None
+    installment_total = None
+    cuota_patterns = [
+        r'(?:cuota|cta|c)\s*(\d{1,2})\s*/\s*(\d{1,2})',   # C 03/05, CUOTA 3/6, CTA 2/12
+        r'(\d{1,2})\s*/\s*(\d{1,2})\s*(?:cuota|cta|c)\b',  # 03/05 C
+        r'\((\d{1,2})/(\d{1,2})\)',                          # (3/5)
+        r'\b(\d{2})/(\d{2})\b',                              # bare 06/06 (cuota if curr <= total <= 48)
+    ]
+    for cpat in cuota_patterns:
+        cm = re.search(cpat, desc_part, re.IGNORECASE)
+        if cm:
+            curr = int(cm.group(1))
+            total = int(cm.group(2))
+            if 1 <= curr <= total <= 48:
+                installment_current = curr
+                installment_total = total
+                desc_part = desc_part[:cm.start()] + desc_part[cm.end():]
+                break
+
+    # Clean up description: remove remaining date patterns like 15/03 or 15/03/2026
     desc_clean = re.sub(r'\d{2}/\d{2}(/\d{2,4})?\s*', '', desc_part).strip()
     # Remove trailing separators
     desc_clean = desc_clean.rstrip('-–—').strip()
@@ -635,6 +657,8 @@ def _parse_statement_line(line: str) -> StatementLinePreview | None:
         amount=amount,
         subcategory=_guess_subcategory(desc_clean),
         date="",
+        installment_current=installment_current,
+        installment_total=installment_total,
     )
 
 
@@ -656,28 +680,80 @@ def parse_statement(data: StatementParseRequest):
 
 @router.post("/statement/import", status_code=201)
 def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)):
-    """Import parsed statement lines as transactions."""
+    """Import parsed statement lines as transactions.
+
+    Lines with installment info (cuotas) create a CardPurchase and
+    auto-generate remaining future installment transactions.
+    """
     period = db.query(MonthlyPeriod).filter(MonthlyPeriod.id == data.period_id).first()
     if not period:
         raise HTTPException(404, "Period not found")
 
     created = 0
+    cuotas_created = 0
+    txn_date = date(period.year, period.month, 1)
+
     for line in data.lines:
-        txn_date = date.fromisoformat(line.date) if line.date else date(period.year, period.month, 1)
-        txn = Transaction(
-            period_id=data.period_id,
-            description=line.description,
-            amount=line.amount,
-            currency="ARS",
-            transaction_type="expense",
-            category="tarjeta",
-            subcategory=line.subcategory,
-            date=txn_date,
-            is_fixed=False,
-            notes="Importado desde resumen de tarjeta",
-        )
-        db.add(txn)
-        created += 1
+        line_date = date.fromisoformat(line.date) if line.date else txn_date
+
+        if line.installment_current and line.installment_total and line.installment_total > 1:
+            # This is a cuota — create CardPurchase + future installments
+            total_amount = line.amount * line.installment_total
+            installment_amount = line.amount
+
+            purchase = CardPurchase(
+                description=line.description,
+                total_amount=total_amount,
+                installments_total=line.installment_total,
+                installment_amount=installment_amount,
+                subcategory=line.subcategory,
+                date=line_date,
+                source_period_id=period.id,
+            )
+            db.add(purchase)
+            db.flush()
+
+            # Create transactions from current installment to the last one
+            y, m = period.year, period.month
+            for i in range(line.installment_current, line.installment_total + 1):
+                target_period = get_or_create_period(db, y, m, period)
+                txn = Transaction(
+                    period_id=target_period.id,
+                    description=f"{line.description} (cuota {i}/{line.installment_total})",
+                    amount=installment_amount,
+                    currency="ARS",
+                    transaction_type="expense",
+                    category="tarjeta",
+                    subcategory=line.subcategory,
+                    date=date(y, m, 1),
+                    is_fixed=False,
+                    notes="Importado desde resumen de tarjeta",
+                    card_purchase_id=purchase.id,
+                    installment_number=i,
+                )
+                db.add(txn)
+                created += 1
+                y, m = _next_month(y, m)
+            cuotas_created += 1
+        else:
+            # Simple one-time charge
+            txn = Transaction(
+                period_id=data.period_id,
+                description=line.description,
+                amount=line.amount,
+                currency="ARS",
+                transaction_type="expense",
+                category="tarjeta",
+                subcategory=line.subcategory,
+                date=line_date,
+                is_fixed=False,
+                notes="Importado desde resumen de tarjeta",
+            )
+            db.add(txn)
+            created += 1
 
     db.commit()
-    return {"message": f"Se importaron {created} consumos de tarjeta", "count": created}
+    msg = f"Se importaron {created} consumos de tarjeta"
+    if cuotas_created > 0:
+        msg += f" ({cuotas_created} en cuotas con cuotas futuras pre-cargadas)"
+    return {"message": msg, "count": created, "installment_purchases": cuotas_created}

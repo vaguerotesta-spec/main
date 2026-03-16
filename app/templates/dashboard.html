@@ -744,19 +744,26 @@ async function parseStatement() {
 
 function renderStatementPreview(data) {
     const tbody = document.getElementById('stmtPreviewBody');
+    const cuotaCount = data.lines.filter(l => l.installment_current && l.installment_total).length;
     tbody.innerHTML = data.lines.map((l, i) => {
         const opts = Object.entries(cardSubcategories).map(([k,v]) =>
             `<option value="${k}" ${k === l.subcategory ? 'selected' : ''}>${v}</option>`
         ).join('');
+        const cuotaInfo = l.installment_current && l.installment_total
+            ? `<span class="badge badge-cuota">cuota ${l.installment_current}/${l.installment_total}</span>`
+            : '';
         return `<tr>
-            <td>${l.description}</td>
+            <td>${l.description} ${cuotaInfo}</td>
             <td class="amount-expense">${fmt(l.amount)}</td>
             <td><select onchange="parsedLines[${i}].subcategory=this.value">${opts}</select></td>
             <td><button class="btn btn-danger btn-sm" onclick="removePreviewLine(${i})">x</button></td>
         </tr>`;
     }).join('');
-    document.getElementById('stmtSummary').innerHTML =
-        `<strong>${data.count} consumos</strong> por un total de <strong>${fmt(data.total)}</strong>`;
+    let summary = `<strong>${data.count} consumos</strong> por un total de <strong>${fmt(data.total)}</strong>`;
+    if (cuotaCount > 0) {
+        summary += `<br><span style="font-size:0.85rem;color:var(--purple)">${cuotaCount} en cuotas: las cuotas restantes se pre-cargaran en los meses siguientes</span>`;
+    }
+    document.getElementById('stmtSummary').innerHTML = summary;
 }
 
 function removePreviewLine(idx) {
