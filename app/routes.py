@@ -726,13 +726,20 @@ def _parse_statement_line(line: str) -> StatementLinePreview | None:
 
 
 @router.post("/statement/parse", response_model=StatementParseResponse)
-def parse_statement(data: StatementParseRequest):
+def parse_statement(data: StatementParseRequest, db: Session = Depends(get_db)):
     """Parse pasted credit card statement text into structured lines."""
+    # Load existing card transactions to flag duplicates
+    existing_txns = db.query(Transaction).filter(
+        Transaction.period_id == data.period_id,
+        Transaction.category == "tarjeta",
+    ).all()
+
     lines = data.text.strip().split('\n')
     parsed = []
     for line in lines:
         result = _parse_statement_line(line)
         if result:
+            result.already_exists = _find_duplicate(existing_txns, result)
             parsed.append(result)
     return StatementParseResponse(
         lines=parsed,
@@ -747,17 +754,31 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
 
     Lines with installment info (cuotas) create a CardPurchase and
     auto-generate remaining future installment transactions.
+    Detects pre-loaded cuotas and skips duplicates.
     """
     period = db.query(MonthlyPeriod).filter(MonthlyPeriod.id == data.period_id).first()
     if not period:
         raise HTTPException(404, "Period not found")
 
+    # Load existing card transactions for this period to detect duplicates
+    existing_txns = db.query(Transaction).filter(
+        Transaction.period_id == data.period_id,
+        Transaction.category == "tarjeta",
+    ).all()
+
     created = 0
+    skipped = 0
     cuotas_created = 0
     txn_date = date(period.year, period.month, 1)
 
     for line in data.lines:
         line_date = date.fromisoformat(line.date) if line.date else txn_date
+
+        # Check for duplicate: same base description + similar amount already exists
+        is_duplicate = _find_duplicate(existing_txns, line)
+        if is_duplicate:
+            skipped += 1
+            continue
 
         if line.installment_current and line.installment_total and line.installment_total > 1:
             # This is a cuota — create CardPurchase + future installments
@@ -821,7 +842,29 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
     msg = f"Se importaron {created} consumos de tarjeta"
     if cuotas_created > 0:
         msg += f" ({cuotas_created} en cuotas con cuotas futuras pre-cargadas)"
-    return {"message": msg, "count": created, "installment_purchases": cuotas_created}
+    if skipped > 0:
+        msg += f". Se omitieron {skipped} que ya estaban cargados"
+    return {"message": msg, "count": created, "skipped": skipped, "installment_purchases": cuotas_created}
+
+
+def _find_duplicate(existing_txns: list, line: StatementLinePreview) -> bool:
+    """Check if a statement line matches an already-existing transaction."""
+    desc_lower = line.description.lower().strip()
+    for txn in existing_txns:
+        txn_desc = txn.description.lower().strip()
+        # Check amount match (within 1 peso tolerance for rounding)
+        if abs(txn.amount - line.amount) > 1:
+            continue
+        # Exact description match
+        if txn_desc == desc_lower:
+            return True
+        # Pre-loaded cuota: "ZARA (cuota 4/6)" matches imported "ZARA"
+        if desc_lower in txn_desc and txn.card_purchase_id is not None:
+            return True
+        # Imported description contained in existing (e.g. partial match)
+        if txn_desc in desc_lower:
+            return True
+    return False
 
 
 # ── Credit Cards ─────────────────────────────────────────────────────────────

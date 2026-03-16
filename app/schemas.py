@@ -186,6 +186,7 @@ class StatementLinePreview(BaseModel):
     date: str
     installment_current: Optional[int] = None
     installment_total: Optional[int] = None
+    already_exists: Optional[bool] = False
 
 
 class StatementParseRequest(BaseModel):

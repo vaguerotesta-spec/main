@@ -528,6 +528,40 @@ class TestStatementImport:
         assert len(periods) == 3  # April, May, June
 
 
+    def test_import_skips_duplicates(self):
+        pid = create_test_period(year=2026, month=3).json()["id"]
+        # First import
+        lines = [
+            {"description": "SPOTIFY", "amount": 2500, "subcategory": "entretenimiento", "date": ""},
+            {"description": "ZARA", "amount": 25000, "subcategory": "indumentaria", "date": "",
+             "installment_current": 3, "installment_total": 5},
+        ]
+        res1 = client.post("/api/statement/import", json={"period_id": pid, "lines": lines})
+        assert res1.json()["count"] == 4  # SPOTIFY + ZARA cuotas 3,4,5
+
+        # Second import of same statement — should skip duplicates
+        res2 = client.post("/api/statement/import", json={"period_id": pid, "lines": lines})
+        assert res2.json()["skipped"] == 2
+        assert res2.json()["count"] == 0
+
+    def test_parse_flags_existing(self):
+        pid = create_test_period(year=2026, month=3).json()["id"]
+        # Create a transaction first
+        client.post("/api/transactions", json={
+            "period_id": pid, "description": "SPOTIFY", "amount": 2500,
+            "currency": "ARS", "transaction_type": "expense",
+            "category": "tarjeta", "notes": ""
+        })
+        # Parse should flag it
+        text = "SPOTIFY  $2.500,00\nZARA  $89.000,00"
+        res = client.post("/api/statement/parse", json={"period_id": pid, "text": text})
+        data = res.json()
+        spotify = next(l for l in data["lines"] if l["description"] == "SPOTIFY")
+        zara = next(l for l in data["lines"] if l["description"] == "ZARA")
+        assert spotify["already_exists"] is True
+        assert zara["already_exists"] is False
+
+
 class TestCreditCards:
     def test_create_credit_card(self):
         res = client.post("/api/credit-cards", json={"name": "Visa Galicia", "color": "#3498db"})

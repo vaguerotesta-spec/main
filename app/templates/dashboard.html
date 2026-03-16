@@ -919,14 +919,23 @@ function renderStatementPreview(data) {
         const cuotaInfo = l.installment_current && l.installment_total
             ? `<span class="badge badge-cuota">cuota ${l.installment_current}/${l.installment_total}</span>`
             : '';
-        return `<tr>
-            <td>${l.description} ${cuotaInfo}</td>
+        const dupStyle = l.already_exists ? 'opacity:0.5;text-decoration:line-through' : '';
+        const dupBadge = l.already_exists ? '<span class="badge badge-fixed">ya cargado</span>' : '';
+        return `<tr style="${dupStyle}">
+            <td>${l.description} ${cuotaInfo} ${dupBadge}</td>
             <td class="amount-expense">${fmt(l.amount)}</td>
             <td><select onchange="parsedLines[${i}].subcategory=this.value">${opts}</select></td>
             <td><button class="btn btn-danger btn-sm" onclick="removePreviewLine(${i})">x</button></td>
         </tr>`;
     }).join('');
+    const dupCount = data.lines.filter(l => l.already_exists).length;
+    const newLines = data.lines.filter(l => !l.already_exists);
+    const newTotal = newLines.reduce((s, l) => s + l.amount, 0);
     let summary = `<strong>${data.count} consumos</strong> por un total de <strong>${fmt(data.total)}</strong>`;
+    if (dupCount > 0) {
+        summary += `<br><span style="font-size:0.85rem;color:var(--gray)">${dupCount} ya cargados (se omitiran al importar)</span>`;
+        summary += ` — <strong>${newLines.length} nuevos</strong> por <strong>${fmt(newTotal)}</strong>`;
+    }
     if (cuotaCount > 0) {
         summary += `<br><span style="font-size:0.85rem;color:var(--purple)">${cuotaCount} en cuotas: las cuotas restantes se pre-cargaran en los meses siguientes</span>`;
     }
