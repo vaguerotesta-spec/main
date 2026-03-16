@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Finanzas</title>
+    <style>
+        :root {
+            --beige: #F5F0EB;
+            --greige: #C4BAA8;
+            --white: #FFFFFF;
+            --gray-light: #E8E4E0;
+            --gray: #9E9893;
+            --gray-dark: #5C5652;
+            --pink-light: #F2E0E0;
+            --pink: #D4A5A5;
+            --pink-dark: #B07A7A;
+            --green-soft: #A8C5A0;
+            --green-dark: #6B9B60;
+            --red-soft: #D4A5A5;
+            --red-dark: #B07A7A;
+            --shadow: 0 2px 12px rgba(92, 86, 82, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--beige);
+            color: var(--gray-dark);
+            min-height: 100vh;
+        }
+
+        /* ── Header ─────────────────────────────────────── */
+        header {
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-light);
+            padding: 1.25rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+        }
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gray-dark);
+            letter-spacing: -0.5px;
+        }
+        header h1 span { color: var(--pink-dark); }
+
+        .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+
+        /* ── Buttons ────────────────────────────────────── */
+        .btn {
+            padding: 0.5rem 1.15rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--pink-dark);
+            color: var(--white);
+        }
+        .btn-primary:hover { background: #9B6868; }
+        .btn-secondary {
+            background: var(--gray-light);
+            color: var(--gray-dark);
+        }
+        .btn-secondary:hover { background: var(--greige); }
+        .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+        .btn-danger { background: var(--red-soft); color: #fff; }
+        .btn-danger:hover { background: var(--red-dark); }
+        .btn-success { background: var(--green-soft); color: var(--gray-dark); }
+        .btn-success:hover { background: var(--green-dark); color: #fff; }
+
+        /* ── Layout ─────────────────────────────────────── */
+        .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+
+        /* ── Summary Cards ──────────────────────────────── */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            background: var(--white);
+            border-radius: 14px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow);
+        }
+        .card-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray);
+            margin-bottom: 0.35rem;
+        }
+        .card-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+        .card-sub {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 0.25rem;
+        }
+        .text-green { color: var(--green-dark); }
+        .text-red { color: var(--red-dark); }
+        .text-pink { color: var(--pink-dark); }
+
+        /* ── Section ────────────────────────────────────── */
+        .section {
+            background: var(--white);
+            border-radius: 14px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* ── Table ──────────────────────────────────────── */
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray);
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid var(--gray-light);
+        }
+        td {
+            padding: 0.7rem 0.75rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--beige);
+        }
+        tr:hover td { background: var(--beige); }
+        .amount-income { color: var(--green-dark); font-weight: 600; }
+        .amount-expense { color: var(--red-dark); font-weight: 600; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge-income { background: #e8f5e3; color: var(--green-dark); }
+        .badge-expense { background: var(--pink-light); color: var(--pink-dark); }
+        .badge-fixed { background: var(--gray-light); color: var(--gray); }
+
+        /* ── Modal ──────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(92,86,82,0.35);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 480px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        }
+        .modal h2 {
+            font-size: 1.15rem;
+            margin-bottom: 1.25rem;
+            color: var(--gray-dark);
+        }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--gray);
+            margin-bottom: 0.3rem;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            border: 1px solid var(--gray-light);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--gray-dark);
+            background: var(--beige);
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--pink);
+            box-shadow: 0 0 0 3px rgba(212,165,165,0.2);
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+        /* ── Period selector ────────────────────────────── */
+        .period-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .period-bar select {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-light);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: var(--white);
+            color: var(--gray-dark);
+        }
+
+        /* ── Progress bar ───────────────────────────────── */
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--gray-light);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.4s ease;
+        }
+
+        /* ── Empty state ────────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--gray);
+        }
+        .empty-state p { margin-bottom: 1rem; }
+
+        /* ── Responsive ─────────────────────────────────── */
+        @media (max-width: 640px) {
+            header { padding: 1rem; flex-direction: column; gap: 0.75rem; }
+            .container { padding: 1rem; }
+            .form-row { grid-template-columns: 1fr; }
+            .summary-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Mi <span>Finanzas</span></h1>
+    <div class="header-actions">
+        <button class="btn btn-secondary" onclick="openPeriodModal()">+ Nuevo mes</button>
+    </div>
+</header>
+
+<div class="container">
+    <!-- Period selector -->
+    <div class="period-bar">
+        <select id="periodSelect" onchange="loadPeriod()">
+            <option value="">Seleccioná un mes...</option>
+        </select>
+        <button class="btn btn-sm btn-secondary" onclick="seedDefaults()" id="btnSeed" style="display:none">
+            Cargar gastos fijos
+        </button>
+        <span id="rateDisplay" style="font-size:0.85rem;color:var(--gray)"></span>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="summary-grid" id="summaryCards" style="display:none">
+        <div class="card">
+            <div class="card-label">Ingresos totales</div>
+            <div class="card-value text-green" id="totalIncome">$0</div>
+            <div class="card-sub" id="incomeDetail"></div>
+        </div>
+        <div class="card">
+            <div class="card-label">Gastos totales</div>
+            <div class="card-value text-red" id="totalExpenses">$0</div>
+            <div class="card-sub" id="expenseDetail"></div>
+        </div>
+        <div class="card">
+            <div class="card-label">Balance</div>
+            <div class="card-value" id="balance">$0</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="balanceBar" style="width:0%"></div>
+            </div>
+            <div class="card-sub" id="balancePct"></div>
+        </div>
+        <div class="card">
+            <div class="card-label">Dólar blue</div>
+            <div class="card-value text-pink" id="blueRate">$0</div>
+            <div class="card-sub">
+                <a href="#" onclick="editRate()" style="color:var(--pink-dark);text-decoration:none">editar</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="section" id="txnSection" style="display:none">
+        <div class="section-header">
+            <h2 class="section-title">Movimientos</h2>
+            <button class="btn btn-primary btn-sm" onclick="openTxnModal()">+ Agregar</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th>Categoría</th>
+                    <th>Monto</th>
+                    <th>Tipo</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="txnBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+        <p>Creá tu primer mes para empezar a organizar tus finanzas</p>
+        <button class="btn btn-primary" onclick="openPeriodModal()">Crear mes</button>
+    </div>
+</div>
+
+<!-- New Period Modal -->
+<div class="modal-overlay" id="periodModal">
+    <div class="modal">
+        <h2>Nuevo período mensual</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Año</label>
+                <input type="number" id="pYear" value="2026">
+            </div>
+            <div class="form-group">
+                <label>Mes</label>
+                <select id="pMonth">
+                    <option value="1">Enero</option>
+                    <option value="2">Febrero</option>
+                    <option value="3">Marzo</option>
+                    <option value="4" selected>Abril</option>
+                    <option value="5">Mayo</option>
+                    <option value="6">Junio</option>
+                    <option value="7">Julio</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Cotización dólar blue (ARS)</label>
+            <input type="number" id="pRate" value="1350" step="10">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closePeriodModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="createPeriod()">Crear</button>
+        </div>
+    </div>
+</div>
+
+<!-- New Transaction Modal -->
+<div class="modal-overlay" id="txnModal">
+    <div class="modal">
+        <h2 id="txnModalTitle">Nuevo movimiento</h2>
+        <div class="form-group">
+            <label>Descripción</label>
+            <input type="text" id="tDesc" placeholder="Ej: Supermercado">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Monto</label>
+                <input type="number" id="tAmount" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Moneda</label>
+                <select id="tCurrency">
+                    <option value="ARS">ARS</option>
+                    <option value="USD">USD</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="tType">
+                    <option value="expense">Gasto</option>
+                    <option value="income">Ingreso</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Categoría</label>
+                <select id="tCategory"></select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Fecha</label>
+            <input type="date" id="tDate">
+        </div>
+        <div class="form-group">
+            <label>Notas</label>
+            <input type="text" id="tNotes" placeholder="Opcional">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeTxnModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveTxn()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const MONTHS = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let categories = {};
+let currentPeriodId = null;
+
+// ── API helpers ─────────────────────────────────────────
+async function api(path, opts = {}) {
+    const res = await fetch('/api' + path, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts,
+    });
+    if (res.status === 204) return null;
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Error');
+    }
+    return res.json();
+}
+
+function fmt(n, currency = 'ARS') {
+    if (currency === 'USD') return 'US$ ' + n.toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+    return '$ ' + n.toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+}
+
+// ── Init ────────────────────────────────────────────────
+async function init() {
+    categories = await api('/categories');
+    populateCategorySelect();
+    await loadPeriods();
+}
+
+function populateCategorySelect() {
+    const sel = document.getElementById('tCategory');
+    sel.innerHTML = '';
+    for (const [key, label] of Object.entries(categories)) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = label;
+        sel.appendChild(opt);
+    }
+}
+
+async function loadPeriods() {
+    const periods = await api('/periods');
+    const sel = document.getElementById('periodSelect');
+    sel.innerHTML = '<option value="">Seleccioná un mes...</option>';
+    for (const p of periods) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${MONTHS[p.month]} ${p.year}`;
+        sel.appendChild(opt);
+    }
+    if (periods.length > 0) {
+        sel.value = periods[0].id;
+        loadPeriod();
+    }
+    document.getElementById('emptyState').style.display = periods.length === 0 ? '' : 'none';
+}
+
+async function loadPeriod() {
+    const id = document.getElementById('periodSelect').value;
+    if (!id) {
+        document.getElementById('summaryCards').style.display = 'none';
+        document.getElementById('txnSection').style.display = 'none';
+        return;
+    }
+    currentPeriodId = parseInt(id);
+    const summary = await api(`/summary/${id}`);
+    renderSummary(summary);
+    renderTransactions(summary.transactions);
+    document.getElementById('summaryCards').style.display = '';
+    document.getElementById('txnSection').style.display = '';
+    document.getElementById('btnSeed').style.display = '';
+}
+
+function renderSummary(s) {
+    document.getElementById('totalIncome').textContent = fmt(s.total_income_ars_converted);
+    document.getElementById('incomeDetail').textContent =
+        `${fmt(s.total_income_usd, 'USD')} + ${fmt(s.total_income_ars)}`;
+    document.getElementById('totalExpenses').textContent = fmt(s.total_expenses_ars_converted);
+    document.getElementById('expenseDetail').textContent =
+        `${fmt(s.total_expenses_usd, 'USD')} + ${fmt(s.total_expenses_ars)}`;
+
+    const bal = s.balance_ars;
+    const balEl = document.getElementById('balance');
+    balEl.textContent = fmt(bal);
+    balEl.className = 'card-value ' + (bal >= 0 ? 'text-green' : 'text-red');
+
+    const pct = s.total_income_ars_converted > 0
+        ? Math.min(100, (s.total_expenses_ars_converted / s.total_income_ars_converted) * 100)
+        : 0;
+    const bar = document.getElementById('balanceBar');
+    bar.style.width = pct + '%';
+    bar.style.background = pct > 90 ? 'var(--red-dark)' : pct > 70 ? 'var(--pink)' : 'var(--green-soft)';
+    document.getElementById('balancePct').textContent = `${pct.toFixed(0)}% de ingresos gastados`;
+
+    document.getElementById('blueRate').textContent = fmt(s.period.blue_dollar_rate);
+    document.getElementById('rateDisplay').textContent = `1 USD = ${fmt(s.period.blue_dollar_rate)}`;
+}
+
+function renderTransactions(txns) {
+    const tbody = document.getElementById('txnBody');
+    if (txns.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:2rem">Sin movimientos. Usá "Cargar gastos fijos" para comenzar.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = txns.map(t => `
+        <tr>
+            <td>
+                ${t.description}
+                ${t.is_fixed ? '<span class="badge badge-fixed">fijo</span>' : ''}
+            </td>
+            <td>${categories[t.category] || t.category}</td>
+            <td class="${t.transaction_type === 'income' ? 'amount-income' : 'amount-expense'}">
+                ${t.transaction_type === 'income' ? '+' : '-'} ${fmt(t.amount, t.currency)}
+            </td>
+            <td><span class="badge ${t.transaction_type === 'income' ? 'badge-income' : 'badge-expense'}">${t.transaction_type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteTxn(${t.id})">×</button></td>
+        </tr>
+    `).join('');
+}
+
+// ── Period Modal ────────────────────────────────────────
+function openPeriodModal() {
+    document.getElementById('periodModal').classList.add('active');
+}
+function closePeriodModal() {
+    document.getElementById('periodModal').classList.remove('active');
+}
+async function createPeriod() {
+    const year = parseInt(document.getElementById('pYear').value);
+    const month = parseInt(document.getElementById('pMonth').value);
+    const rate = parseFloat(document.getElementById('pRate').value);
+    await api('/periods', { method: 'POST', body: JSON.stringify({ year, month, blue_dollar_rate: rate, notes: '' }) });
+    closePeriodModal();
+    await loadPeriods();
+}
+
+// ── Transaction Modal ───────────────────────────────────
+function openTxnModal() {
+    document.getElementById('tDesc').value = '';
+    document.getElementById('tAmount').value = '';
+    document.getElementById('tCurrency').value = 'ARS';
+    document.getElementById('tType').value = 'expense';
+    document.getElementById('tCategory').value = 'other_expense';
+    document.getElementById('tDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('tNotes').value = '';
+    document.getElementById('txnModal').classList.add('active');
+}
+function closeTxnModal() {
+    document.getElementById('txnModal').classList.remove('active');
+}
+async function saveTxn() {
+    const data = {
+        period_id: currentPeriodId,
+        description: document.getElementById('tDesc').value,
+        amount: parseFloat(document.getElementById('tAmount').value),
+        currency: document.getElementById('tCurrency').value,
+        transaction_type: document.getElementById('tType').value,
+        category: document.getElementById('tCategory').value,
+        date: document.getElementById('tDate').value,
+        notes: document.getElementById('tNotes').value,
+        is_fixed: false,
+    };
+    await api('/transactions', { method: 'POST', body: JSON.stringify(data) });
+    closeTxnModal();
+    await loadPeriod();
+}
+async function deleteTxn(id) {
+    if (!confirm('¿Eliminar este movimiento?')) return;
+    await api(`/transactions/${id}`, { method: 'DELETE' });
+    await loadPeriod();
+}
+
+// ── Seed defaults ───────────────────────────────────────
+async function seedDefaults() {
+    if (!confirm('¿Cargar ingresos y gastos fijos del mes?')) return;
+    await api(`/periods/${currentPeriodId}/seed-defaults`, { method: 'POST' });
+    await loadPeriod();
+}
+
+// ── Edit rate ───────────────────────────────────────────
+async function editRate() {
+    const newRate = prompt('Nueva cotización dólar blue:');
+    if (!newRate) return;
+    await api(`/periods/${currentPeriodId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ blue_dollar_rate: parseFloat(newRate) }),
+    });
+    await loadPeriod();
+}
+
+init();
+</script>
+
+</body>
+</html>
