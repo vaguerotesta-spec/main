@@ -501,6 +501,122 @@ class TestStatementImport:
         assert len(periods) == 3  # April, May, June
 
 
+class TestCreditCards:
+    def test_create_credit_card(self):
+        res = client.post("/api/credit-cards", json={"name": "Visa Galicia", "color": "#3498db"})
+        assert res.status_code == 201
+        data = res.json()
+        assert data["name"] == "Visa Galicia"
+        assert data["color"] == "#3498db"
+
+    def test_list_credit_cards(self):
+        client.post("/api/credit-cards", json={"name": "Visa Galicia"})
+        client.post("/api/credit-cards", json={"name": "Mastercard BBVA"})
+        res = client.get("/api/credit-cards")
+        assert res.status_code == 200
+        assert len(res.json()) == 2
+
+    def test_duplicate_card_rejected(self):
+        client.post("/api/credit-cards", json={"name": "Visa Galicia"})
+        res = client.post("/api/credit-cards", json={"name": "Visa Galicia"})
+        assert res.status_code == 400
+
+    def test_delete_credit_card(self):
+        card_id = client.post("/api/credit-cards", json={"name": "Test Card"}).json()["id"]
+        res = client.delete(f"/api/credit-cards/{card_id}")
+        assert res.status_code == 204
+        assert len(client.get("/api/credit-cards").json()) == 0
+
+    def test_delete_card_unlinks_transactions(self):
+        pid = create_test_period().json()["id"]
+        card_id = client.post("/api/credit-cards", json={"name": "Visa"}).json()["id"]
+        client.post("/api/transactions", json={
+            "period_id": pid, "description": "Zara",
+            "amount": 50000, "currency": "ARS",
+            "transaction_type": "expense", "category": "tarjeta",
+            "credit_card_id": card_id, "notes": ""
+        })
+        client.delete(f"/api/credit-cards/{card_id}")
+        txns = client.get(f"/api/transactions?period_id={pid}").json()
+        assert len(txns) == 1
+        assert txns[0]["credit_card_id"] is None
+
+    def test_statement_import_with_credit_card(self):
+        pid = create_test_period().json()["id"]
+        card_id = client.post("/api/credit-cards", json={"name": "Visa Galicia"}).json()["id"]
+        lines = [
+            {"description": "SPOTIFY", "amount": 2500, "subcategory": "entretenimiento", "date": ""},
+        ]
+        res = client.post("/api/statement/import", json={
+            "period_id": pid, "lines": lines, "credit_card_id": card_id
+        })
+        assert res.status_code == 201
+        txns = client.get(f"/api/transactions?period_id={pid}").json()
+        assert txns[0]["credit_card_id"] == card_id
+
+    def test_card_purchase_with_credit_card(self):
+        pid = create_test_period(year=2026, month=5).json()["id"]
+        card_id = client.post("/api/credit-cards", json={"name": "MC BBVA"}).json()["id"]
+        client.post("/api/card-purchases", json={
+            "description": "Zapatillas", "total_amount": 300000,
+            "installments_total": 3, "installment_current": 1,
+            "subcategory": "indumentaria", "period_id": pid,
+            "credit_card_id": card_id,
+        })
+        txns = client.get(f"/api/transactions?period_id={pid}").json()
+        assert txns[0]["credit_card_id"] == card_id
+
+
+class TestNLParser:
+    def test_parse_basic_income_expense(self):
+        pid = create_test_period().json()["id"]
+        text = "Me ingresan $1,750 usd y $400.000 ars. Pago $915.000 de alquiler"
+        res = client.post("/api/nl-parse", json={"period_id": pid, "text": text})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["count"] >= 3
+        descs = {i["description"]: i for i in data["items"]}
+        # Should detect USD salary
+        usd_items = [i for i in data["items"] if i["currency"] == "USD"]
+        assert len(usd_items) >= 1
+        assert usd_items[0]["amount"] == 1750
+        # Should detect rent
+        rent_items = [i for i in data["items"] if i["category"] == "rent"]
+        assert len(rent_items) == 1
+        assert rent_items[0]["amount"] == 915000
+
+    def test_parse_multiple_expenses(self):
+        pid = create_test_period().json()["id"]
+        text = "$170.000 de expensas + $60.000 de cochera + $250.000 de la maestria"
+        res = client.post("/api/nl-parse", json={"period_id": pid, "text": text})
+        data = res.json()
+        assert data["count"] == 3
+        cats = [i["category"] for i in data["items"]]
+        assert "expensas" in cats
+        assert "expensas_cochera" in cats
+        assert "maestria" in cats
+
+    def test_import_nl_creates_transactions(self):
+        pid = create_test_period().json()["id"]
+        items = [
+            {"description": "Salario USD", "amount": 1750, "currency": "USD",
+             "transaction_type": "income", "category": "salary_usd", "is_fixed": True},
+            {"description": "Alquiler", "amount": 915000, "currency": "ARS",
+             "transaction_type": "expense", "category": "rent", "is_fixed": True},
+        ]
+        res = client.post("/api/nl-import", json={"period_id": pid, "items": items})
+        assert res.status_code == 201
+        assert res.json()["count"] == 2
+        txns = client.get(f"/api/transactions?period_id={pid}").json()
+        assert len(txns) == 2
+
+    def test_parse_empty_text(self):
+        pid = create_test_period().json()["id"]
+        res = client.post("/api/nl-parse", json={"period_id": pid, "text": "nada de nada"})
+        assert res.status_code == 200
+        assert res.json()["count"] == 0
+
+
 class TestDashboard:
     def test_dashboard_returns_html(self):
         res = client.get("/")

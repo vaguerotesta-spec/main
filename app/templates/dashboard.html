@@ -220,6 +220,7 @@
 <header>
     <h1>Mi <span>Finanzas</span></h1>
     <div style="display:flex;gap:0.75rem;align-items:center">
+        <button class="btn btn-sm btn-accent" onclick="openCreditCardModal()">Tarjetas</button>
         <button class="btn btn-secondary" onclick="openPeriodModal()">+ Nuevo mes</button>
     </div>
 </header>
@@ -230,6 +231,7 @@
             <option value="">Selecciona un mes...</option>
         </select>
         <button class="btn btn-sm btn-secondary" onclick="seedDefaults()" id="btnSeed" style="display:none">Cargar gastos fijos</button>
+        <button class="btn btn-sm btn-accent" onclick="openNLModal()" id="btnNL" style="display:none">Describir en texto</button>
         <span id="rateDisplay" style="font-size:0.85rem;color:var(--gray)"></span>
     </div>
 
@@ -385,6 +387,9 @@
                 <button class="btn btn-sm btn-secondary" onclick="openNewSubcatModal()" title="Agregar subcategoria">+</button>
             </div>
         </div>
+        <div class="form-group"><label>Tarjeta</label>
+            <select id="cCardSelect"></select>
+        </div>
         <div class="form-group"><label>Fecha</label><input type="date" id="cDate"></div>
         <div style="background:var(--beige);border-radius:8px;padding:0.75rem;margin-top:0.5rem">
             <div style="font-size:0.8rem;color:var(--gray)">Vista previa</div>
@@ -401,6 +406,13 @@
 <div class="modal-overlay" id="statementModal">
     <div class="modal modal-wide">
         <h2>Cargar resumen de tarjeta de credito</h2>
+        <div class="form-group">
+            <label>Tarjeta</label>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+                <select id="stmtCardSelect" style="flex:1"></select>
+                <button class="btn btn-sm btn-secondary" onclick="openCreditCardModal()" title="Administrar tarjetas">Administrar</button>
+            </div>
+        </div>
         <div class="form-group">
             <label>Pega el resumen de tu tarjeta de credito</label>
             <textarea id="stmtText" placeholder="Ejemplo:
@@ -449,12 +461,60 @@ YPF ESTACION               $28.000,00"></textarea>
     </div>
 </div>
 
+<!-- Natural Language Modal -->
+<div class="modal-overlay" id="nlModal">
+    <div class="modal modal-wide">
+        <h2>Describir movimientos en texto</h2>
+        <div class="form-group">
+            <label>Escribi tus ingresos y gastos como quieras</label>
+            <textarea id="nlText" placeholder="Ejemplo: Me ingresan $1,750 usd y $400.000 ars. Pago $915.000 de alquiler + $170.000 de expensas + $60.000 de cochera. Se suman $250.000 de la maestria, $55.000 de EPEC, $100.000 al fondo comun con mi pareja y $100 usd al fondo de jubilacion"></textarea>
+        </div>
+        <div class="modal-actions" style="margin-top:0.5rem;margin-bottom:0">
+            <button class="btn btn-secondary btn-sm" onclick="parseNL()">Analizar texto</button>
+        </div>
+        <div id="nlPreview" style="display:none">
+            <div class="preview-table">
+                <table>
+                    <thead><tr><th>Descripcion</th><th>Monto</th><th>Moneda</th><th>Tipo</th><th></th></tr></thead>
+                    <tbody id="nlPreviewBody"></tbody>
+                </table>
+            </div>
+            <div class="preview-summary" id="nlSummary"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeNLModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="importNL()" id="btnNLImport" style="display:none">Importar todos</button>
+        </div>
+    </div>
+</div>
+
+<!-- Credit Card Management Modal -->
+<div class="modal-overlay" id="creditCardModal">
+    <div class="modal" style="max-width:450px">
+        <h2>Tarjetas de credito</h2>
+        <div class="form-group">
+            <label>Nombre de la tarjeta</label>
+            <div style="display:flex;gap:0.5rem">
+                <input type="text" id="ccName" placeholder="Ej: Visa Galicia" style="flex:1">
+                <input type="color" id="ccColor" value="#B07A7A" style="width:42px;height:38px;border:1px solid var(--gray-light);border-radius:8px;cursor:pointer">
+                <button class="btn btn-primary btn-sm" onclick="addCreditCard()">+</button>
+            </div>
+        </div>
+        <div id="creditCardList" style="margin-top:1rem"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeCreditCardModal()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const MONTHS = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 let categories = {};
 let cardSubcategories = {};
+let creditCards = [];
 let currentPeriodId = null;
 let parsedLines = [];
+let nlParsedItems = [];
 
 async function api(path, opts = {}) {
     const res = await fetch('/api' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
@@ -474,10 +534,28 @@ function fmt(n, currency = 'ARS') {
 
 // ── Init ────────────────────────────────────────────────
 async function init() {
-    [categories, cardSubcategories] = await Promise.all([api('/categories'), api('/card-subcategories')]);
+    [categories, cardSubcategories, creditCards] = await Promise.all([
+        api('/categories'), api('/card-subcategories'), api('/credit-cards')
+    ]);
     populateCategorySelect();
     populateCardSubcategorySelect();
+    populateCardSelects();
     await loadPeriods();
+}
+
+function populateCardSelects() {
+    ['stmtCardSelect', 'cCardSelect'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Sin tarjeta asignada</option>';
+        for (const card of creditCards) {
+            const opt = document.createElement('option');
+            opt.value = card.id;
+            opt.textContent = card.name;
+            opt.style.color = card.color;
+            sel.appendChild(opt);
+        }
+    });
 }
 
 function populateCategorySelect() {
@@ -530,6 +608,7 @@ async function loadPeriod() {
     document.getElementById('summaryCards').style.display = '';
     document.getElementById('txnSection').style.display = '';
     document.getElementById('btnSeed').style.display = '';
+    document.getElementById('btnNL').style.display = '';
     loadInsights();
 }
 
@@ -569,7 +648,7 @@ function renderTransactions(txns) {
     // Render non-card transactions
     html += otherTxns.map(t => renderTxnRow(t)).join('');
 
-    // Render card section as collapsible group
+    // Render card section as collapsible group, grouped by credit card
     if (cardTxns.length > 0) {
         html += `
         <tr class="tc-row" onclick="toggleTC()">
@@ -582,17 +661,36 @@ function renderTransactions(txns) {
             <td><span class="badge badge-expense">Gasto</span></td>
             <td></td>
         </tr>`;
-        html += cardTxns.map(t => `
-        <tr class="tc-detail hidden">
-            <td style="padding-left:2.5rem">
-                ${t.description}
-                ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}
-            </td>
-            <td>${t.subcategory ? (cardSubcategories[t.subcategory] || t.subcategory) : 'Otros'}</td>
-            <td class="amount-expense">- ${fmt(t.amount, t.currency)}</td>
-            <td></td>
-            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteTxn(${t.id})">x</button></td>
-        </tr>`).join('');
+        // Group by credit card
+        const cardMap = new Map();
+        cardTxns.forEach(t => {
+            const key = t.credit_card_id || 0;
+            if (!cardMap.has(key)) cardMap.set(key, []);
+            cardMap.get(key).push(t);
+        });
+        const cardById = Object.fromEntries(creditCards.map(c => [c.id, c]));
+        for (const [cardId, txns] of cardMap) {
+            const card = cardById[cardId];
+            if (card && cardMap.size > 1) {
+                const cardColor = card.color || 'var(--pink-dark)';
+                html += `<tr class="tc-detail hidden"><td colspan="5" style="padding-left:1.5rem;font-weight:600;font-size:0.85rem;color:${cardColor}">${card.name}</td></tr>`;
+            }
+            html += txns.map(t => {
+                const cardBadge = card ? `<span class="badge" style="background:${card.color}22;color:${card.color}">${card.name}</span>` : '';
+                return `
+                <tr class="tc-detail hidden">
+                    <td style="padding-left:2.5rem">
+                        ${t.description}
+                        ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}
+                        ${cardMap.size <= 1 && card ? cardBadge : ''}
+                    </td>
+                    <td>${t.subcategory ? (cardSubcategories[t.subcategory] || t.subcategory) : 'Otros'}</td>
+                    <td class="amount-expense">- ${fmt(t.amount, t.currency)}</td>
+                    <td></td>
+                    <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteTxn(${t.id})">x</button></td>
+                </tr>`;
+            }).join('');
+        }
     }
 
     tbody.innerHTML = html;
@@ -727,12 +825,14 @@ async function saveCardPurchase() {
     if (!amount || amount <= 0) { alert('Ingresa el monto total'); return; }
     if (!current || current < 1 || !total || total < 1 || current > total) { alert('Verifica las cuotas'); return; }
     try {
+        const cCardId = document.getElementById('cCardSelect').value;
         await api('/card-purchases', { method: 'POST', body: JSON.stringify({
             description: desc, total_amount: amount,
             installment_current: current, installments_total: total,
             subcategory: document.getElementById('cSubcategory').value,
             period_id: currentPeriodId,
             date: document.getElementById('cDate').value || null,
+            credit_card_id: cCardId ? parseInt(cCardId) : null,
         })});
         closeCardModal(); await loadPeriod();
     } catch (e) { alert('Error: ' + e.message); }
@@ -804,10 +904,15 @@ function removePreviewLine(idx) {
 async function importStatement() {
     if (parsedLines.length === 0) return;
     if (!confirm(`Importar ${parsedLines.length} consumos de tarjeta?`)) return;
+    const cardId = document.getElementById('stmtCardSelect').value;
     try {
         await api('/statement/import', {
             method: 'POST',
-            body: JSON.stringify({ period_id: currentPeriodId, lines: parsedLines }),
+            body: JSON.stringify({
+                period_id: currentPeriodId,
+                lines: parsedLines,
+                credit_card_id: cardId ? parseInt(cardId) : null,
+            }),
         });
         closeStatementModal();
         await loadPeriod();
@@ -872,6 +977,123 @@ async function deleteSubcategory(key) {
         cardSubcategories = await api(`/card-subcategories/${key}`, { method: 'DELETE' });
         populateCardSubcategorySelect();
         renderCustomSubcatList();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ── Natural Language Modal ──────────────────────────
+function openNLModal() {
+    document.getElementById('nlText').value = '';
+    document.getElementById('nlPreview').style.display = 'none';
+    document.getElementById('btnNLImport').style.display = 'none';
+    nlParsedItems = [];
+    document.getElementById('nlModal').classList.add('active');
+}
+function closeNLModal() { document.getElementById('nlModal').classList.remove('active'); }
+
+async function parseNL() {
+    const text = document.getElementById('nlText').value.trim();
+    if (!text) { alert('Escribi tus movimientos'); return; }
+    try {
+        const data = await api('/nl-parse', {
+            method: 'POST',
+            body: JSON.stringify({ period_id: currentPeriodId, text }),
+        });
+        nlParsedItems = data.items;
+        if (data.count === 0) {
+            alert('No se pudieron detectar movimientos. Proba con otro texto.');
+            return;
+        }
+        renderNLPreview();
+        document.getElementById('nlPreview').style.display = '';
+        document.getElementById('btnNLImport').style.display = '';
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+function renderNLPreview() {
+    const tbody = document.getElementById('nlPreviewBody');
+    tbody.innerHTML = nlParsedItems.map((item, i) => `
+        <tr>
+            <td>${item.description}</td>
+            <td class="${item.transaction_type === 'income' ? 'amount-income' : 'amount-expense'}">
+                ${item.transaction_type === 'income' ? '+' : '-'} ${fmt(item.amount, item.currency)}
+            </td>
+            <td>${item.currency}</td>
+            <td><span class="badge ${item.transaction_type === 'income' ? 'badge-income' : 'badge-expense'}">${item.transaction_type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
+            <td><button class="btn btn-danger btn-sm" onclick="removeNLItem(${i})">x</button></td>
+        </tr>
+    `).join('');
+    const totalInc = nlParsedItems.filter(i => i.transaction_type === 'income').reduce((s, i) => s + i.amount * (i.currency === 'USD' ? 1350 : 1), 0);
+    const totalExp = nlParsedItems.filter(i => i.transaction_type === 'expense').reduce((s, i) => s + i.amount * (i.currency === 'USD' ? 1350 : 1), 0);
+    document.getElementById('nlSummary').innerHTML = `<strong>${nlParsedItems.length} movimientos</strong> detectados — Ingresos: <span class="text-green">${fmt(totalInc)}</span> | Gastos: <span class="text-red">${fmt(totalExp)}</span>`;
+}
+
+function removeNLItem(idx) {
+    nlParsedItems.splice(idx, 1);
+    renderNLPreview();
+    if (nlParsedItems.length === 0) {
+        document.getElementById('nlPreview').style.display = 'none';
+        document.getElementById('btnNLImport').style.display = 'none';
+    }
+}
+
+async function importNL() {
+    if (nlParsedItems.length === 0) return;
+    if (!confirm(`Importar ${nlParsedItems.length} movimientos?`)) return;
+    try {
+        await api('/nl-import', {
+            method: 'POST',
+            body: JSON.stringify({ period_id: currentPeriodId, items: nlParsedItems }),
+        });
+        closeNLModal();
+        await loadPeriod();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ── Credit Card Management ─────────────────────────
+function openCreditCardModal() {
+    document.getElementById('ccName').value = '';
+    renderCreditCardList();
+    document.getElementById('creditCardModal').classList.add('active');
+}
+function closeCreditCardModal() { document.getElementById('creditCardModal').classList.remove('active'); }
+
+function renderCreditCardList() {
+    const el = document.getElementById('creditCardList');
+    if (creditCards.length === 0) {
+        el.innerHTML = '<div style="font-size:0.85rem;color:var(--gray)">No hay tarjetas registradas</div>';
+        return;
+    }
+    el.innerHTML = creditCards.map(c => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--beige)">
+            <div style="display:flex;align-items:center;gap:0.5rem">
+                <span style="width:14px;height:14px;border-radius:50%;background:${c.color};display:inline-block"></span>
+                <span style="font-size:0.9rem">${c.name}</span>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="deleteCreditCard(${c.id})">x</button>
+        </div>
+    `).join('');
+}
+
+async function addCreditCard() {
+    const name = document.getElementById('ccName').value.trim();
+    const color = document.getElementById('ccColor').value;
+    if (!name) { alert('Ingresa un nombre para la tarjeta'); return; }
+    try {
+        await api('/credit-cards', { method: 'POST', body: JSON.stringify({ name, color }) });
+        creditCards = await api('/credit-cards');
+        populateCardSelects();
+        document.getElementById('ccName').value = '';
+        renderCreditCardList();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function deleteCreditCard(id) {
+    if (!confirm('Eliminar esta tarjeta? Los consumos asociados no se eliminaran.')) return;
+    try {
+        await api(`/credit-cards/${id}`, { method: 'DELETE' });
+        creditCards = await api('/credit-cards');
+        populateCardSelects();
+        renderCreditCardList();
     } catch (e) { alert('Error: ' + e.message); }
 }
 

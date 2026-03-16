@@ -39,6 +39,7 @@ class TransactionCreate(BaseModel):
     notes: str = ""
     card_purchase_id: Optional[int] = None
     installment_number: Optional[int] = None
+    credit_card_id: Optional[int] = None
 
     @field_validator("date", mode="before")
     @classmethod
@@ -60,6 +61,7 @@ class TransactionUpdate(BaseModel):
     date: Optional[date] = None
     is_fixed: Optional[bool] = None
     notes: Optional[str] = None
+    credit_card_id: Optional[int] = None
 
 
 class TransactionResponse(BaseModel):
@@ -76,6 +78,7 @@ class TransactionResponse(BaseModel):
     notes: str
     card_purchase_id: Optional[int]
     installment_number: Optional[int]
+    credit_card_id: Optional[int]
 
     class Config:
         from_attributes = True
@@ -104,6 +107,7 @@ class CardPurchaseCreate(BaseModel):
     subcategory: str = "otros"
     period_id: int
     date: str = ""
+    credit_card_id: Optional[int] = None
 
     @field_validator("date", mode="before")
     @classmethod
@@ -129,6 +133,23 @@ class CardPurchaseResponse(BaseModel):
         from_attributes = True
 
 
+# ── Credit Cards ─────────────────────────────────────────
+
+
+class CreditCardCreate(BaseModel):
+    name: str
+    color: str = "#B07A7A"
+
+
+class CreditCardResponse(BaseModel):
+    id: int
+    name: str
+    color: str
+
+    class Config:
+        from_attributes = True
+
+
 # ── Insights ─────────────────────────────────────────────
 
 
@@ -136,7 +157,7 @@ class InsightItem(BaseModel):
     category: str
     message: str
     change_percent: Optional[float] = None
-    direction: str  # "up", "down", "stable", "new"
+    direction: str
 
 
 class PeriodInsightsResponse(BaseModel):
@@ -154,8 +175,8 @@ class StatementLinePreview(BaseModel):
     amount: float
     subcategory: str
     date: str
-    installment_current: Optional[int] = None  # e.g. 3
-    installment_total: Optional[int] = None     # e.g. 5
+    installment_current: Optional[int] = None
+    installment_total: Optional[int] = None
 
 
 class StatementParseRequest(BaseModel):
@@ -172,3 +193,26 @@ class StatementParseResponse(BaseModel):
 class StatementImportRequest(BaseModel):
     period_id: int
     lines: list[StatementLinePreview]
+    credit_card_id: Optional[int] = None
+
+
+# ── Natural Language Parser ──────────────────────────────
+
+
+class NLParseItem(BaseModel):
+    description: str
+    amount: float
+    currency: str
+    transaction_type: str  # income / expense
+    category: str
+    is_fixed: bool
+
+
+class NLParseRequest(BaseModel):
+    period_id: int
+    text: str
+
+
+class NLParseResponse(BaseModel):
+    items: list[NLParseItem]
+    count: int

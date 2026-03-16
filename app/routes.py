@@ -9,6 +9,7 @@ from app.models import (
     Transaction,
     CardPurchase,
     CustomSubcategory,
+    CreditCard,
     CATEGORY_LABELS,
     CARD_SUBCATEGORY_LABELS,
 )
@@ -22,12 +23,17 @@ from app.schemas import (
     MonthlySummary,
     CardPurchaseCreate,
     CardPurchaseResponse,
+    CreditCardCreate,
+    CreditCardResponse,
     InsightItem,
     PeriodInsightsResponse,
     StatementParseRequest,
     StatementParseResponse,
     StatementLinePreview,
     StatementImportRequest,
+    NLParseRequest,
+    NLParseResponse,
+    NLParseItem,
 )
 
 router = APIRouter(prefix="/api")
@@ -386,6 +392,7 @@ def create_card_purchase(data: CardPurchaseCreate, db: Session = Depends(get_db)
             notes=f"Compra en cuotas - {data.description}",
             card_purchase_id=purchase.id,
             installment_number=i,
+            credit_card_id=data.credit_card_id,
         )
         db.add(txn)
         y, m = _next_month(y, m)
@@ -772,6 +779,7 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
                     notes="Importado desde resumen de tarjeta",
                     card_purchase_id=purchase.id,
                     installment_number=i,
+                    credit_card_id=data.credit_card_id,
                 )
                 db.add(txn)
                 created += 1
@@ -790,6 +798,7 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
                 date=line_date,
                 is_fixed=False,
                 notes="Importado desde resumen de tarjeta",
+                credit_card_id=data.credit_card_id,
             )
             db.add(txn)
             created += 1
@@ -799,3 +808,227 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
     if cuotas_created > 0:
         msg += f" ({cuotas_created} en cuotas con cuotas futuras pre-cargadas)"
     return {"message": msg, "count": created, "installment_purchases": cuotas_created}
+
+
+# ── Credit Cards ─────────────────────────────────────────────────────────────
+
+
+@router.get("/credit-cards", response_model=list[CreditCardResponse])
+def list_credit_cards(db: Session = Depends(get_db)):
+    return db.query(CreditCard).order_by(CreditCard.name).all()
+
+
+@router.post("/credit-cards", response_model=CreditCardResponse, status_code=201)
+def create_credit_card(data: CreditCardCreate, db: Session = Depends(get_db)):
+    existing = db.query(CreditCard).filter(CreditCard.name == data.name).first()
+    if existing:
+        raise HTTPException(400, f"Ya existe una tarjeta con el nombre '{data.name}'")
+    card = CreditCard(**data.model_dump())
+    db.add(card)
+    db.commit()
+    db.refresh(card)
+    return card
+
+
+@router.delete("/credit-cards/{card_id}", status_code=204)
+def delete_credit_card(card_id: int, db: Session = Depends(get_db)):
+    card = db.query(CreditCard).filter(CreditCard.id == card_id).first()
+    if not card:
+        raise HTTPException(404, "Tarjeta no encontrada")
+    # Unlink transactions but don't delete them
+    db.query(Transaction).filter(Transaction.credit_card_id == card_id).update(
+        {Transaction.credit_card_id: None}
+    )
+    db.delete(card)
+    db.commit()
+
+
+# ── Natural Language Parser ──────────────────────────────────────────────────
+
+_INCOME_KEYWORDS = [
+    "ingres", "cobro", "recib", "salario", "sueldo", "gananci", "honorari",
+]
+_EXPENSE_KEYWORDS = [
+    "pago", "gasto", "debo", "cuesta", "pongo", "abono", "cuota",
+]
+
+# Map description patterns to categories
+_NL_CATEGORY_MAP = [
+    (["alquiler", "alquilo"], "rent", "Alquiler"),
+    (["expensas de cochera", "expensa cochera", "cochera"], "expensas_cochera", "Expensas cochera"),
+    (["expensas", "expensa"], "expensas", "Expensas"),
+    (["maestri", "universidad", "posgrado", "master"], "maestria", "Maestria"),
+    (["epec", "luz", "electricidad", "energia"], "epec", "EPEC"),
+    (["fondo comun", "fondo pareja", "fondo compartido"], "fondo_pareja", "Fondo comun pareja"),
+    (["jubilacion", "retiro", "retirement", "fondo jubilacion"], "fondo_jubilacion", "Fondo jubilacion"),
+    (["tarjeta", "tc", "credito"], "tarjeta", "Tarjeta de credito"),
+]
+
+
+def _parse_nl_amount(text: str) -> list[tuple[float, str, int, int]]:
+    """Extract all amounts from text. Returns (amount, currency, start, end)."""
+    results = []
+    # Match patterns like: $1,750 usd, $400.000 ars, $915.000, US$100, u$s 100
+    patterns = [
+        # US$1,750 or US$ 1,750 or u$s 100 or USD 1750
+        r'(?:us\$|u\$s|usd)\s*([\d.,]+)',
+        # $1,750 usd or $400.000 ars
+        r'\$([\d.,]+)\s*(usd|ars|dolares|pesos)',
+        # Plain $amount (default ARS)
+        r'\$([\d.,]+)',
+        # Number + currency word
+        r'([\d.,]+)\s*(usd|ars|dolares|pesos|dolar)',
+    ]
+    for pat in patterns:
+        for m in re.finditer(pat, text, re.IGNORECASE):
+            amount_str = m.group(1)
+            # Determine currency
+            full = m.group(0).lower()
+            currency = "USD" if any(w in full for w in ["usd", "us$", "u$s", "dolar"]) else "ARS"
+            # If has group 2, check it
+            if m.lastindex and m.lastindex >= 2 and m.group(2):
+                g2 = m.group(2).lower()
+                if g2 in ("usd", "dolares", "dolar"):
+                    currency = "USD"
+                elif g2 in ("ars", "pesos"):
+                    currency = "ARS"
+            # Parse the number
+            # Handle "1,750" (english) vs "400.000" (spanish) vs "1.750,50"
+            if ',' in amount_str and '.' in amount_str:
+                # Could be 1,750.00 (english) or 1.750,00 (spanish)
+                if amount_str.rindex(',') > amount_str.rindex('.'):
+                    # Spanish: 1.750,00
+                    amount = float(amount_str.replace('.', '').replace(',', '.'))
+                else:
+                    # English: 1,750.00
+                    amount = float(amount_str.replace(',', ''))
+            elif ',' in amount_str:
+                # Could be 1,750 (english thousands) or 3,50 (spanish decimal)
+                parts = amount_str.split(',')
+                if len(parts[-1]) == 3:
+                    # English thousands: 1,750
+                    amount = float(amount_str.replace(',', ''))
+                else:
+                    # Spanish decimal: 3,50
+                    amount = float(amount_str.replace(',', '.'))
+            elif '.' in amount_str:
+                # Could be 400.000 (spanish thousands) or 3.50 (english decimal)
+                parts = amount_str.split('.')
+                if len(parts[-1]) == 3 and len(parts) > 1:
+                    # Spanish thousands: 400.000
+                    amount = float(amount_str.replace('.', ''))
+                else:
+                    amount = float(amount_str)
+            else:
+                amount = float(amount_str)
+
+            if amount > 0:
+                results.append((amount, currency, m.start(), m.end()))
+
+    # Deduplicate overlapping matches (keep longest)
+    results.sort(key=lambda x: (x[2], -(x[3] - x[2])))
+    deduped = []
+    last_end = -1
+    for r in results:
+        if r[2] >= last_end:
+            deduped.append(r)
+            last_end = r[3]
+    return deduped
+
+
+@router.post("/nl-parse", response_model=NLParseResponse)
+def parse_natural_language(data: NLParseRequest, db: Session = Depends(get_db)):
+    """Parse a free-text financial description into structured transactions."""
+    period = db.query(MonthlyPeriod).filter(MonthlyPeriod.id == data.period_id).first()
+    if not period:
+        raise HTTPException(404, "Period not found")
+
+    text = data.text.strip()
+    items = []
+
+    # Split by sentence-ending periods (not decimal dots), +, ademas, tambien, se suman
+    # Don't split on bare "y" as it often connects related amounts
+    segments = re.split(r'(?<!\d)\.(?:\s|$)|\+|\bademas\b|\btambien\b|\bse suman\b', text, flags=re.IGNORECASE)
+
+    for segment in segments:
+        segment = segment.strip()
+        if not segment:
+            continue
+
+        amounts = _parse_nl_amount(segment)
+        if not amounts:
+            continue
+
+        seg_lower = segment.lower()
+
+        # Determine if income or expense
+        is_income = any(kw in seg_lower for kw in _INCOME_KEYWORDS)
+        is_expense = any(kw in seg_lower for kw in _EXPENSE_KEYWORDS)
+
+        for amount, currency, _, _ in amounts:
+            # Try to match a category
+            matched_cat = None
+            matched_desc = None
+            for keywords, cat_key, cat_desc in _NL_CATEGORY_MAP:
+                if any(kw in seg_lower for kw in keywords):
+                    matched_cat = cat_key
+                    matched_desc = cat_desc
+                    break
+
+            # If no category matched, guess from context
+            if not matched_cat:
+                if is_income:
+                    matched_cat = "salary_usd" if currency == "USD" else "salary_ars"
+                    matched_desc = "Salario USD" if currency == "USD" else "Salario ARS"
+                else:
+                    matched_cat = "other_expense"
+                    # Try to extract a meaningful description
+                    matched_desc = segment[:60].strip()
+
+            # Determine type
+            if matched_cat in ("salary_usd", "salary_ars", "other_income"):
+                txn_type = "income"
+            elif is_income and not is_expense:
+                txn_type = "income"
+            else:
+                txn_type = "expense"
+
+            items.append(NLParseItem(
+                description=matched_desc,
+                amount=amount,
+                currency=currency,
+                transaction_type=txn_type,
+                category=matched_cat,
+                is_fixed=matched_cat not in ("other_expense", "other_income", "tarjeta"),
+            ))
+
+    return NLParseResponse(items=items, count=len(items))
+
+
+@router.post("/nl-import", status_code=201)
+def import_natural_language(data: dict, db: Session = Depends(get_db)):
+    """Import parsed NL items as transactions."""
+    period_id = data.get("period_id")
+    items = data.get("items", [])
+    period = db.query(MonthlyPeriod).filter(MonthlyPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(404, "Period not found")
+
+    created = 0
+    for item in items:
+        txn = Transaction(
+            period_id=period_id,
+            description=item["description"],
+            amount=item["amount"],
+            currency=item["currency"],
+            transaction_type=item["transaction_type"],
+            category=item["category"],
+            date=date(period.year, period.month, 1),
+            is_fixed=item.get("is_fixed", False),
+            notes="Importado desde texto libre",
+        )
+        db.add(txn)
+        created += 1
+
+    db.commit()
+    return {"message": f"Se cargaron {created} movimientos", "count": created}

@@ -104,6 +104,7 @@ class Transaction(Base):
     notes = Column(String, default="")
     card_purchase_id = Column(Integer, nullable=True, default=None)
     installment_number = Column(Integer, nullable=True, default=None)
+    credit_card_id = Column(Integer, nullable=True, default=None)
 
 
 class CardPurchase(Base):
@@ -125,3 +126,11 @@ class CustomSubcategory(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, nullable=False, unique=True)
     label = Column(String, nullable=False)
+
+
+class CreditCard(Base):
+    __tablename__ = "credit_cards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)  # e.g. "Visa Galicia"
+    color = Column(String, default="#B07A7A")  # display color

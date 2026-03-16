@@ -17,6 +17,7 @@ _new_columns = [
     ("transactions", "subcategory", "TEXT"),
     ("transactions", "card_purchase_id", "INTEGER"),
     ("transactions", "installment_number", "INTEGER"),
+    ("transactions", "credit_card_id", "INTEGER"),
 ]
 with engine.connect() as conn:
     inspector = inspect(engine)
