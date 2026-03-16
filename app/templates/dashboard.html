@@ -684,7 +684,9 @@ function renderTransactions(txns) {
                         ${t.installment_number ? `<span class="badge badge-cuota">cuota ${t.installment_number}</span>` : ''}
                         ${cardMap.size <= 1 && card ? cardBadge : ''}
                     </td>
-                    <td>${t.subcategory ? (cardSubcategories[t.subcategory] || t.subcategory) : 'Otros'}</td>
+                    <td><select style="padding:0.2rem 0.4rem;font-size:0.8rem;border:1px solid var(--gray-light);border-radius:4px;background:var(--white)" onchange="event.stopPropagation(); updateSubcategory(${t.id}, this.value)">
+                        ${Object.entries(cardSubcategories).map(([k,v]) => `<option value="${k}" ${k === (t.subcategory || 'otros') ? 'selected' : ''}>${v}</option>`).join('')}
+                    </select></td>
                     <td class="amount-expense">- ${fmt(t.amount, t.currency)}</td>
                     <td style="white-space:nowrap">
                         <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editTxn(${t.id})" title="Editar">&#9998;</button>
@@ -809,6 +811,11 @@ async function saveTxn() {
         }
         closeTxnModal(); await loadPeriod();
     } catch (e) { alert('Error al guardar: ' + e.message); }
+}
+async function updateSubcategory(id, value) {
+    try {
+        await api(`/transactions/${id}`, { method: 'PATCH', body: JSON.stringify({ subcategory: value }) });
+    } catch (e) { alert('Error: ' + e.message); }
 }
 async function editTxn(id) {
     try {
