@@ -686,8 +686,10 @@ function renderTransactions(txns) {
                     </td>
                     <td>${t.subcategory ? (cardSubcategories[t.subcategory] || t.subcategory) : 'Otros'}</td>
                     <td class="amount-expense">- ${fmt(t.amount, t.currency)}</td>
-                    <td></td>
-                    <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteTxn(${t.id})">x</button></td>
+                    <td style="white-space:nowrap">
+                        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); editTxn(${t.id})" title="Editar">&#9998;</button>
+                        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteTxn(${t.id})">x</button>
+                    </td>
                 </tr>`;
             }).join('');
         }
@@ -710,7 +712,10 @@ function renderTxnRow(t) {
             ${t.transaction_type === 'income' ? '+' : '-'} ${fmt(t.amount, t.currency)}
         </td>
         <td><span class="badge ${t.transaction_type === 'income' ? 'badge-income' : 'badge-expense'}">${t.transaction_type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteTxn(${t.id})">x</button></td>
+        <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm" onclick="editTxn(${t.id})" title="Editar">&#9998;</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTxn(${t.id})">x</button>
+        </td>
     </tr>`;
 }
 
@@ -756,18 +761,24 @@ async function createPeriod() {
 }
 
 // ── Transaction Modal ───────────────────────────────────
-function openTxnModal() {
-    document.getElementById('tDesc').value = '';
-    document.getElementById('tAmount').value = '';
-    document.getElementById('tCurrency').value = 'ARS';
-    document.getElementById('tType').value = 'expense';
-    document.getElementById('tCategory').value = 'other_expense';
-    document.getElementById('tDate').value = new Date().toISOString().slice(0, 10);
-    document.getElementById('tNotes').value = '';
-    document.getElementById('subcategoryGroup').style.display = 'none';
+let editingTxnId = null;
+
+function openTxnModal(txn) {
+    editingTxnId = txn ? txn.id : null;
+    document.getElementById('tDesc').value = txn ? txn.description : '';
+    document.getElementById('tAmount').value = txn ? txn.amount : '';
+    document.getElementById('tCurrency').value = txn ? txn.currency : 'ARS';
+    document.getElementById('tType').value = txn ? txn.transaction_type : 'expense';
+    document.getElementById('tCategory').value = txn ? txn.category : 'other_expense';
+    document.getElementById('tDate').value = txn ? txn.date : new Date().toISOString().slice(0, 10);
+    document.getElementById('tNotes').value = txn ? txn.notes : '';
+    const isTarjeta = (txn ? txn.category : '') === 'tarjeta';
+    document.getElementById('subcategoryGroup').style.display = isTarjeta ? '' : 'none';
+    if (isTarjeta && txn?.subcategory) document.getElementById('tSubcategory').value = txn.subcategory;
+    document.querySelector('#txnModal h2').textContent = editingTxnId ? 'Editar movimiento' : 'Nuevo movimiento';
     document.getElementById('txnModal').classList.add('active');
 }
-function closeTxnModal() { document.getElementById('txnModal').classList.remove('active'); }
+function closeTxnModal() { document.getElementById('txnModal').classList.remove('active'); editingTxnId = null; }
 async function saveTxn() {
     const desc = document.getElementById('tDesc').value.trim();
     const amount = parseFloat(document.getElementById('tAmount').value);
@@ -777,16 +788,33 @@ async function saveTxn() {
     if (!dateVal) { alert('Selecciona una fecha'); return; }
     const cat = document.getElementById('tCategory').value;
     try {
-        await api('/transactions', { method: 'POST', body: JSON.stringify({
-            period_id: currentPeriodId, description: desc, amount,
-            currency: document.getElementById('tCurrency').value,
-            transaction_type: document.getElementById('tType').value,
-            category: cat,
-            subcategory: cat === 'tarjeta' ? document.getElementById('tSubcategory').value : null,
-            date: dateVal, notes: document.getElementById('tNotes').value, is_fixed: false,
-        })});
+        if (editingTxnId) {
+            await api(`/transactions/${editingTxnId}`, { method: 'PATCH', body: JSON.stringify({
+                description: desc, amount,
+                currency: document.getElementById('tCurrency').value,
+                transaction_type: document.getElementById('tType').value,
+                category: cat,
+                subcategory: cat === 'tarjeta' ? document.getElementById('tSubcategory').value : null,
+                date: dateVal, notes: document.getElementById('tNotes').value,
+            })});
+        } else {
+            await api('/transactions', { method: 'POST', body: JSON.stringify({
+                period_id: currentPeriodId, description: desc, amount,
+                currency: document.getElementById('tCurrency').value,
+                transaction_type: document.getElementById('tType').value,
+                category: cat,
+                subcategory: cat === 'tarjeta' ? document.getElementById('tSubcategory').value : null,
+                date: dateVal, notes: document.getElementById('tNotes').value, is_fixed: false,
+            })});
+        }
         closeTxnModal(); await loadPeriod();
     } catch (e) { alert('Error al guardar: ' + e.message); }
+}
+async function editTxn(id) {
+    try {
+        const txn = await api(`/transactions/${id}`);
+        openTxnModal(txn);
+    } catch (e) { alert('Error: ' + e.message); }
 }
 async function deleteTxn(id) {
     if (!confirm('Eliminar este movimiento?')) return;
