@@ -894,7 +894,7 @@ async function loadInsights() {
         if (data.insights.length === 0) {
             list.innerHTML = '<div style="color:var(--gray);font-size:0.85rem;padding:0.5rem 0">Agrega movimientos para ver el analisis.</div>';
         } else {
-            const iconMap = { up: ['icon-up','???'], down: ['icon-down','???'], stable: ['icon-stable','='], new: ['icon-new','*'] };
+            const iconMap = { up: ['icon-up','&#9650;'], down: ['icon-down','&#9660;'], stable: ['icon-stable','='], new: ['icon-new','&#9733;'] };
             list.innerHTML = data.insights.map(i => {
                 const [cls, icon] = iconMap[i.direction] || iconMap.stable;
                 return `<div class="insight-item"><div class="insight-icon ${cls}">${icon}</div><div class="insight-text">${i.message}</div></div>`;
