@@ -346,7 +346,11 @@
             </div>
         </div>
         <div class="form-group" id="subcategoryGroup" style="display:none">
-            <label>Subcategoria tarjeta</label><select id="tSubcategory"></select>
+            <label>Subcategoria tarjeta</label>
+            <div style="display:flex;gap:0.5rem">
+                <select id="tSubcategory" style="flex:1"></select>
+                <button class="btn btn-sm btn-secondary" onclick="openNewSubcatModal()" title="Agregar subcategoria">+</button>
+            </div>
         </div>
         <div class="form-group"><label>Fecha</label><input type="date" id="tDate"></div>
         <div class="form-group"><label>Notas</label><input type="text" id="tNotes" placeholder="Opcional"></div>
@@ -375,7 +379,12 @@
                 <input type="number" id="cTotal" min="1" value="3">
             </div>
         </div>
-        <div class="form-group"><label>Categoria</label><select id="cSubcategory"></select></div>
+        <div class="form-group"><label>Categoria</label>
+            <div style="display:flex;gap:0.5rem">
+                <select id="cSubcategory" style="flex:1"></select>
+                <button class="btn btn-sm btn-secondary" onclick="openNewSubcatModal()" title="Agregar subcategoria">+</button>
+            </div>
+        </div>
         <div class="form-group"><label>Fecha</label><input type="date" id="cDate"></div>
         <div style="background:var(--beige);border-radius:8px;padding:0.75rem;margin-top:0.5rem">
             <div style="font-size:0.8rem;color:var(--gray)">Vista previa</div>
@@ -420,6 +429,22 @@ YPF ESTACION               $28.000,00"></textarea>
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeStatementModal()">Cancelar</button>
             <button class="btn btn-purple" onclick="importStatement()" id="btnImport" style="display:none">Importar todos</button>
+        </div>
+    </div>
+</div>
+
+<!-- New Subcategory Modal -->
+<div class="modal-overlay" id="subcatModal">
+    <div class="modal" style="max-width:400px">
+        <h2>Nueva subcategoria de tarjeta</h2>
+        <div class="form-group">
+            <label>Nombre</label>
+            <input type="text" id="scLabel" placeholder="Ej: Mascotas, Streaming, Gym">
+        </div>
+        <div style="margin-top:1rem" id="customSubcatList"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeNewSubcatModal()">Cerrar</button>
+            <button class="btn btn-primary" onclick="addSubcategory()">Agregar</button>
         </div>
     </div>
 </div>
@@ -800,6 +825,54 @@ async function editRate() {
     if (!r) return;
     await api(`/periods/${currentPeriodId}`, { method: 'PATCH', body: JSON.stringify({ blue_dollar_rate: parseFloat(r) }) });
     await loadPeriod();
+}
+
+// ── Subcategory Management ───────────────────────────
+const DEFAULT_SUBCATS = new Set(["indumentaria","supermercado","restaurantes","entretenimiento","salud","transporte","hogar","tecnologia","educacion","viajes","otros"]);
+
+function openNewSubcatModal() {
+    document.getElementById('scLabel').value = '';
+    renderCustomSubcatList();
+    document.getElementById('subcatModal').classList.add('active');
+}
+function closeNewSubcatModal() { document.getElementById('subcatModal').classList.remove('active'); }
+
+function renderCustomSubcatList() {
+    const customs = Object.entries(cardSubcategories).filter(([k]) => !DEFAULT_SUBCATS.has(k));
+    const el = document.getElementById('customSubcatList');
+    if (customs.length === 0) {
+        el.innerHTML = '<div style="font-size:0.8rem;color:var(--gray)">No hay subcategorias personalizadas</div>';
+        return;
+    }
+    el.innerHTML = '<div style="font-size:0.8rem;color:var(--gray);margin-bottom:0.5rem">Tus subcategorias:</div>' +
+        customs.map(([k, v]) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid var(--beige)">
+            <span style="font-size:0.9rem">${v}</span>
+            <button class="btn btn-danger btn-sm" onclick="deleteSubcategory('${k}')">x</button>
+        </div>`).join('');
+}
+
+async function addSubcategory() {
+    const label = document.getElementById('scLabel').value.trim();
+    if (!label) { alert('Ingresa un nombre'); return; }
+    const key = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '_');
+    try {
+        cardSubcategories = await api('/card-subcategories', {
+            method: 'POST', body: JSON.stringify({ key, label })
+        });
+        populateCardSubcategorySelect();
+        document.getElementById('scLabel').value = '';
+        renderCustomSubcatList();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function deleteSubcategory(key) {
+    if (!confirm('Eliminar esta subcategoria?')) return;
+    try {
+        cardSubcategories = await api(`/card-subcategories/${key}`, { method: 'DELETE' });
+        populateCardSubcategorySelect();
+        renderCustomSubcatList();
+    } catch (e) { alert('Error: ' + e.message); }
 }
 
 init();

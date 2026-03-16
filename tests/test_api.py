@@ -178,6 +178,37 @@ class TestCategories:
         assert data["indumentaria"] == "Indumentaria"
 
 
+class TestCustomSubcategories:
+    def test_create_custom_subcategory(self):
+        res = client.post("/api/card-subcategories", json={"key": "mascotas", "label": "Mascotas"})
+        assert res.status_code == 201
+        data = res.json()
+        assert "mascotas" in data
+        assert data["mascotas"] == "Mascotas"
+
+    def test_list_includes_custom(self):
+        client.post("/api/card-subcategories", json={"key": "gym", "label": "Gimnasio"})
+        res = client.get("/api/card-subcategories")
+        data = res.json()
+        assert "gym" in data
+        assert "indumentaria" in data  # default still there
+
+    def test_delete_custom_subcategory(self):
+        client.post("/api/card-subcategories", json={"key": "test_cat", "label": "Test"})
+        res = client.delete("/api/card-subcategories/test_cat")
+        assert res.status_code == 200
+        assert "test_cat" not in res.json()
+
+    def test_cannot_delete_default(self):
+        res = client.delete("/api/card-subcategories/indumentaria")
+        assert res.status_code == 400
+
+    def test_duplicate_rejected(self):
+        client.post("/api/card-subcategories", json={"key": "mascotas", "label": "Mascotas"})
+        res = client.post("/api/card-subcategories", json={"key": "mascotas", "label": "Mascotas 2"})
+        assert res.status_code == 400
+
+
 class TestCardPurchases:
     def test_create_card_purchase_creates_installments(self):
         pid = create_test_period(year=2026, month=4).json()["id"]

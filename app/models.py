@@ -117,3 +117,11 @@ class CardPurchase(Base):
     subcategory = Column(String, nullable=True, default="otros")
     date = Column(Date, default=date.today)
     source_period_id = Column(Integer, nullable=False)
+
+
+class CustomSubcategory(Base):
+    __tablename__ = "custom_subcategories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, nullable=False, unique=True)
+    label = Column(String, nullable=False)

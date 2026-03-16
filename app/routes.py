@@ -8,6 +8,7 @@ from app.models import (
     MonthlyPeriod,
     Transaction,
     CardPurchase,
+    CustomSubcategory,
     CATEGORY_LABELS,
     CARD_SUBCATEGORY_LABELS,
 )
@@ -286,9 +287,50 @@ def list_categories():
     return CATEGORY_LABELS
 
 
+def _get_all_subcategories(db: Session) -> dict[str, str]:
+    """Merge default subcategories with custom ones from DB."""
+    merged = dict(CARD_SUBCATEGORY_LABELS)
+    customs = db.query(CustomSubcategory).all()
+    for c in customs:
+        merged[c.key] = c.label
+    return merged
+
+
 @router.get("/card-subcategories")
-def list_card_subcategories():
-    return CARD_SUBCATEGORY_LABELS
+def list_card_subcategories(db: Session = Depends(get_db)):
+    return _get_all_subcategories(db)
+
+
+@router.post("/card-subcategories", status_code=201)
+def create_card_subcategory(data: dict, db: Session = Depends(get_db)):
+    """Create a custom card subcategory. Body: {"key": "mascotas", "label": "Mascotas"}"""
+    key = data.get("key", "").strip().lower()
+    label = data.get("label", "").strip()
+    if not key or not label:
+        raise HTTPException(400, "key y label son requeridos")
+    # Remove spaces/special chars from key
+    key = re.sub(r'[^a-z0-9_]', '_', key)
+    # Check if already exists
+    all_subs = _get_all_subcategories(db)
+    if key in all_subs:
+        raise HTTPException(400, f"La subcategoria '{key}' ya existe")
+    custom = CustomSubcategory(key=key, label=label)
+    db.add(custom)
+    db.commit()
+    return _get_all_subcategories(db)
+
+
+@router.delete("/card-subcategories/{key}", status_code=200)
+def delete_card_subcategory(key: str, db: Session = Depends(get_db)):
+    """Delete a custom subcategory (can't delete built-in ones)."""
+    if key in CARD_SUBCATEGORY_LABELS:
+        raise HTTPException(400, "No se puede eliminar una subcategoria predeterminada")
+    custom = db.query(CustomSubcategory).filter(CustomSubcategory.key == key).first()
+    if not custom:
+        raise HTTPException(404, "Subcategoria no encontrada")
+    db.delete(custom)
+    db.commit()
+    return _get_all_subcategories(db)
 
 
 # ── Card Purchases (Cuotas) ─────────────────────────────────────────────────
