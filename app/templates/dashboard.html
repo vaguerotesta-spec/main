@@ -348,7 +348,10 @@
                 <select id="tType"><option value="expense">Gasto</option><option value="income">Ingreso</option></select>
             </div>
             <div class="form-group"><label>Categoria</label>
-                <select id="tCategory" onchange="toggleSubcategory()"></select>
+                <div style="display:flex;gap:0.5rem">
+                    <select id="tCategory" onchange="toggleSubcategory()" style="flex:1"></select>
+                    <button class="btn btn-sm btn-secondary" onclick="openNewCatModal()" title="Agregar categoria">+</button>
+                </div>
             </div>
         </div>
         <div class="form-group" id="subcategoryGroup" style="display:none">
@@ -461,6 +464,29 @@ YPF ESTACION               $28.000,00"></textarea>
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeNewSubcatModal()">Cerrar</button>
             <button class="btn btn-primary" onclick="addSubcategory()">Agregar</button>
+        </div>
+    </div>
+</div>
+
+<!-- New Category Modal -->
+<div class="modal-overlay" id="catModal">
+    <div class="modal" style="max-width:400px">
+        <h2>Nueva categoria</h2>
+        <div class="form-group">
+            <label>Nombre</label>
+            <input type="text" id="catLabel" placeholder="Ej: Gimnasio, Delivery, Seguros">
+        </div>
+        <div class="form-group">
+            <label>Tipo</label>
+            <select id="catType">
+                <option value="expense">Gasto</option>
+                <option value="income">Ingreso</option>
+            </select>
+        </div>
+        <div style="margin-top:1rem" id="customCatList"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeNewCatModal()">Cerrar</button>
+            <button class="btn btn-primary" onclick="addCategory()">Agregar</button>
         </div>
     </div>
 </div>
@@ -1123,6 +1149,56 @@ async function importNL() {
         });
         closeNLModal();
         await loadPeriod();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+// ── Category Management ─────────────────────────────
+const DEFAULT_CATS = new Set(Object.keys(categories).length > 0 ? [] : ["salary_usd","salary_ars","other_income","rent","expensas","expensas_cochera","maestria","epec","fondo_pareja","fondo_jubilacion","tarjeta","other_expense"]);
+
+function openNewCatModal() {
+    document.getElementById('catLabel').value = '';
+    renderCustomCatList();
+    document.getElementById('catModal').classList.add('active');
+}
+function closeNewCatModal() { document.getElementById('catModal').classList.remove('active'); }
+
+function renderCustomCatList() {
+    const builtIn = new Set(["salary_usd","salary_ars","other_income","rent","expensas","expensas_cochera","maestria","epec","fondo_pareja","fondo_jubilacion","tarjeta","other_expense"]);
+    const customs = Object.entries(categories).filter(([k]) => !builtIn.has(k));
+    const el = document.getElementById('customCatList');
+    if (customs.length === 0) {
+        el.innerHTML = '<div style="font-size:0.8rem;color:var(--gray)">No hay categorias personalizadas</div>';
+        return;
+    }
+    el.innerHTML = '<div style="font-size:0.8rem;color:var(--gray);margin-bottom:0.5rem">Tus categorias:</div>' +
+        customs.map(([k, v]) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid var(--beige)">
+            <span style="font-size:0.9rem">${v}</span>
+            <button class="btn btn-danger btn-sm" onclick="deleteCategory('${k}')">x</button>
+        </div>`).join('');
+}
+
+async function addCategory() {
+    const label = document.getElementById('catLabel').value.trim();
+    const catType = document.getElementById('catType').value;
+    if (!label) { alert('Ingresa un nombre'); return; }
+    const key = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '_');
+    try {
+        categories = await api('/categories', {
+            method: 'POST', body: JSON.stringify({ key, label, type: catType })
+        });
+        populateCategorySelect();
+        document.getElementById('catLabel').value = '';
+        renderCustomCatList();
+    } catch (e) { alert('Error: ' + e.message); }
+}
+
+async function deleteCategory(key) {
+    if (!confirm('Eliminar esta categoria?')) return;
+    try {
+        categories = await api(`/categories/${key}`, { method: 'DELETE' });
+        populateCategorySelect();
+        renderCustomCatList();
     } catch (e) { alert('Error: ' + e.message); }
 }
 

@@ -9,6 +9,7 @@ from app.models import (
     Transaction,
     CardPurchase,
     CustomSubcategory,
+    CustomCategory,
     CreditCard,
     CATEGORY_LABELS,
     CARD_SUBCATEGORY_LABELS,
@@ -302,9 +303,49 @@ def seed_default_transactions(period_id: int, db: Session = Depends(get_db)):
 # ── Categories ───────────────────────────────────────────────────────────────
 
 
+def _get_all_categories(db: Session) -> dict[str, str]:
+    """Merge default categories with custom ones from DB."""
+    merged = dict(CATEGORY_LABELS)
+    customs = db.query(CustomCategory).all()
+    for c in customs:
+        merged[c.key] = c.label
+    return merged
+
+
 @router.get("/categories")
-def list_categories():
-    return CATEGORY_LABELS
+def list_categories(db: Session = Depends(get_db)):
+    return _get_all_categories(db)
+
+
+@router.post("/categories", status_code=201)
+def create_category(data: dict, db: Session = Depends(get_db)):
+    """Create a custom category. Body: {"key": "gym", "label": "Gimnasio", "type": "expense"}"""
+    key = data.get("key", "").strip().lower()
+    label = data.get("label", "").strip()
+    cat_type = data.get("type", "expense")
+    if not key or not label:
+        raise HTTPException(400, "key y label son requeridos")
+    key = re.sub(r'[^a-z0-9_]', '_', key)
+    all_cats = _get_all_categories(db)
+    if key in all_cats:
+        raise HTTPException(400, f"La categoria '{key}' ya existe")
+    custom = CustomCategory(key=key, label=label, category_type=cat_type)
+    db.add(custom)
+    db.commit()
+    return _get_all_categories(db)
+
+
+@router.delete("/categories/{key}", status_code=200)
+def delete_category(key: str, db: Session = Depends(get_db)):
+    """Delete a custom category (can't delete built-in ones)."""
+    if key in CATEGORY_LABELS:
+        raise HTTPException(400, "No se puede eliminar una categoria predeterminada")
+    custom = db.query(CustomCategory).filter(CustomCategory.key == key).first()
+    if not custom:
+        raise HTTPException(404, "Categoria no encontrada")
+    db.delete(custom)
+    db.commit()
+    return _get_all_categories(db)
 
 
 def _get_all_subcategories(db: Session) -> dict[str, str]:

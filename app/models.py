@@ -128,6 +128,15 @@ class CustomSubcategory(Base):
     label = Column(String, nullable=False)
 
 
+class CustomCategory(Base):
+    __tablename__ = "custom_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, nullable=False, unique=True)
+    label = Column(String, nullable=False)
+    category_type = Column(String, nullable=False, default="expense")  # income / expense
+
+
 class CreditCard(Base):
     __tablename__ = "credit_cards"
 

@@ -205,6 +205,37 @@ class TestCategories:
         assert data["indumentaria"] == "Indumentaria"
 
 
+class TestCustomCategories:
+    def test_create_custom_category(self):
+        res = client.post("/api/categories", json={"key": "gym", "label": "Gimnasio", "type": "expense"})
+        assert res.status_code == 201
+        data = res.json()
+        assert "gym" in data
+        assert data["gym"] == "Gimnasio"
+
+    def test_list_includes_custom(self):
+        client.post("/api/categories", json={"key": "delivery", "label": "Delivery", "type": "expense"})
+        res = client.get("/api/categories")
+        data = res.json()
+        assert "delivery" in data
+        assert "rent" in data  # default still there
+
+    def test_delete_custom_category(self):
+        client.post("/api/categories", json={"key": "test_cat", "label": "Test", "type": "expense"})
+        res = client.delete("/api/categories/test_cat")
+        assert res.status_code == 200
+        assert "test_cat" not in res.json()
+
+    def test_cannot_delete_default(self):
+        res = client.delete("/api/categories/rent")
+        assert res.status_code == 400
+
+    def test_duplicate_rejected(self):
+        client.post("/api/categories", json={"key": "gym", "label": "Gimnasio", "type": "expense"})
+        res = client.post("/api/categories", json={"key": "gym", "label": "Gym 2", "type": "expense"})
+        assert res.status_code == 400
+
+
 class TestCustomSubcategories:
     def test_create_custom_subcategory(self):
         res = client.post("/api/card-subcategories", json={"key": "mascotas", "label": "Mascotas"})
