@@ -267,16 +267,18 @@
 
     <!-- Charts -->
     <div class="section" id="chartsSection" style="display:none">
-        <div class="section-header">
-            <h2 class="section-title">Resumen visual</h2>
+        <div class="section-header" style="cursor:pointer" onclick="toggleCharts()">
+            <h2 class="section-title"><span class="tc-toggle" id="chartsToggle">&#9654;</span> Resumen visual</h2>
         </div>
-        <div class="charts-grid">
-            <div style="position:relative;max-height:280px;display:flex;align-items:center;justify-content:center">
-                <canvas id="chartExpenses"></canvas>
-            </div>
-            <div>
-                <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.75rem;color:var(--gray)">Gastos por categoria</div>
-                <div id="categoryBars"></div>
+        <div id="chartsBody" style="display:none">
+            <div class="charts-grid">
+                <div style="position:relative;max-height:280px;display:flex;align-items:center;justify-content:center">
+                    <canvas id="chartExpenses"></canvas>
+                </div>
+                <div>
+                    <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.75rem;color:var(--gray)">Gastos por categoria</div>
+                    <div id="categoryBars"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -857,6 +859,14 @@ function renderTxnRow(t) {
             <button class="btn btn-danger btn-sm" onclick="deleteTxn(${t.id})">x</button>
         </td>
     </tr>`;
+}
+
+function toggleCharts() {
+    const body = document.getElementById('chartsBody');
+    const toggle = document.getElementById('chartsToggle');
+    const isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? '' : 'none';
+    toggle.classList.toggle('open', isHidden);
 }
 
 function toggleInsights() {

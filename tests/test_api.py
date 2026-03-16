@@ -406,31 +406,10 @@ class TestInsights:
         data = res.json()
         assert data["previous_period_id"] == p1
         assert len(data["insights"]) > 0
-        # Should mention expenses went up
-        msgs = [i["message"] for i in data["insights"]]
-        assert any("subieron" in m for m in msgs)
+        # Should mention expenses change
+        assert "Gast" in data["summary"]
 
-    def test_insights_card_subcategory(self):
-        p1 = create_test_period(year=2026, month=3).json()["id"]
-        client.post("/api/transactions", json={
-            "period_id": p1, "description": "Zara",
-            "amount": 50000, "currency": "ARS",
-            "transaction_type": "expense", "category": "tarjeta",
-            "subcategory": "indumentaria", "notes": ""
-        })
-        p2 = create_test_period(year=2026, month=4).json()["id"]
-        client.post("/api/transactions", json={
-            "period_id": p2, "description": "Zara + H&M",
-            "amount": 80000, "currency": "ARS",
-            "transaction_type": "expense", "category": "tarjeta",
-            "subcategory": "indumentaria", "notes": ""
-        })
-        res = client.get(f"/api/insights/{p2}")
-        data = res.json()
-        msgs = [i["message"] for i in data["insights"]]
-        assert any("Indumentaria" in m for m in msgs)
-
-    def test_insights_new_category(self):
+    def test_insights_shows_biggest_mover(self):
         p1 = create_test_period(year=2026, month=3).json()["id"]
         client.post("/api/transactions", json={
             "period_id": p1, "description": "Alquiler",
@@ -440,15 +419,16 @@ class TestInsights:
         })
         p2 = create_test_period(year=2026, month=4).json()["id"]
         client.post("/api/transactions", json={
-            "period_id": p2, "description": "EPEC",
-            "amount": 55000, "currency": "ARS",
-            "transaction_type": "expense", "category": "epec",
+            "period_id": p2, "description": "Alquiler",
+            "amount": 915000, "currency": "ARS",
+            "transaction_type": "expense", "category": "rent",
             "notes": ""
         })
         res = client.get(f"/api/insights/{p2}")
         data = res.json()
         msgs = [i["message"] for i in data["insights"]]
-        assert any("EPEC" in m for m in msgs)
+        # Should show biggest mover (Alquiler)
+        assert any("suba" in m.lower() or "baja" in m.lower() for m in msgs)
 
 
 class TestStatementParse:

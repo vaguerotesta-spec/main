@@ -532,113 +532,64 @@ def get_insights(period_id: int, db: Session = Depends(get_db)):
 
     insights = []
 
-    # Overall expenses
+    # 1. Overall expenses change
     pct, direction = _pct_change(prev_exp_total, curr_exp_total)
     if pct is not None:
         if direction == "up":
-            msg = f"Tus gastos totales subieron {pct}% respecto al mes anterior"
+            msg = f"Gastos totales: +{pct}% vs mes anterior"
         elif direction == "down":
-            msg = f"Tus gastos totales bajaron {abs(pct)}% respecto al mes anterior"
+            msg = f"Gastos totales: -{abs(pct)}% vs mes anterior"
         else:
-            msg = "Tus gastos totales se mantuvieron estables"
+            msg = "Gastos totales estables vs mes anterior"
         insights.append(InsightItem(category="general", message=msg, change_percent=pct, direction=direction))
 
-    # Overall income
-    pct, direction = _pct_change(prev_inc_total, curr_inc_total)
-    if pct is not None and direction != "stable":
-        if direction == "up":
-            msg = f"Tus ingresos subieron {pct}%"
-        else:
-            msg = f"Tus ingresos bajaron {abs(pct)}%"
-        insights.append(InsightItem(category="general", message=msg, change_percent=pct, direction=direction))
+    # 2. Savings rate
+    if curr_inc_total > 0:
+        curr_savings = round(((curr_inc_total - curr_exp_total) / curr_inc_total) * 100, 1)
+        insights.append(InsightItem(
+            category="ahorro",
+            message=f"Ahorro: {curr_savings}% de tus ingresos",
+            direction="up" if curr_savings > 20 else "down" if curr_savings < 5 else "stable"
+        ))
 
-    # Category-level comparison
+    # 3. Top category that changed most (only the biggest mover)
     curr_cats = _category_totals(curr_txns, rate_curr)
     prev_cats = _category_totals(prev_txns, rate_prev)
     all_cats = set(list(curr_cats.keys()) + list(prev_cats.keys()))
 
+    biggest_change = None
+    biggest_pct = 0
     for cat in all_cats:
         curr_val = curr_cats.get(cat, 0)
         prev_val = prev_cats.get(cat, 0)
-        pct, direction = _pct_change(prev_val, curr_val)
+        cat_pct, cat_dir = _pct_change(prev_val, curr_val)
+        if cat_pct is not None and abs(cat_pct) > abs(biggest_pct) and cat_dir != "stable":
+            biggest_change = (cat, cat_pct, cat_dir, curr_val)
+            biggest_pct = cat_pct
+
+    if biggest_change:
+        cat, cat_pct, cat_dir, curr_val = biggest_change
         label = CATEGORY_LABELS.get(cat, cat)
-
-        if direction == "new":
+        if cat_dir == "up":
             insights.append(InsightItem(
                 category=cat,
-                message=f"Nuevo gasto en {label} este mes: {_fmt_ars(curr_val)}",
-                direction="new"
+                message=f"Mayor suba: {label} (+{cat_pct}%)",
+                change_percent=cat_pct, direction="up"
             ))
-        elif direction == "up" and pct and pct > 5:
-            insights.append(InsightItem(
-                category=cat,
-                message=f"Tus gastos en {label} subieron {pct}%",
-                change_percent=pct, direction="up"
-            ))
-        elif direction == "down" and pct and pct < -5:
-            insights.append(InsightItem(
-                category=cat,
-                message=f"Tus gastos en {label} bajaron {abs(pct)}% 🎉",
-                change_percent=pct, direction="down"
-            ))
-
-    # Card subcategory breakdown
-    curr_subs = _subcategory_totals(curr_txns, rate_curr)
-    prev_subs = _subcategory_totals(prev_txns, rate_prev)
-    all_subs = set(list(curr_subs.keys()) + list(prev_subs.keys()))
-
-    for sub in all_subs:
-        curr_val = curr_subs.get(sub, 0)
-        prev_val = prev_subs.get(sub, 0)
-        pct, direction = _pct_change(prev_val, curr_val)
-        label = CARD_SUBCATEGORY_LABELS.get(sub, sub)
-
-        if direction == "new":
-            insights.append(InsightItem(
-                category=f"tarjeta:{sub}",
-                message=f"Nuevo gasto con tarjeta en {label}: {_fmt_ars(curr_val)}",
-                direction="new"
-            ))
-        elif direction == "up" and pct and pct > 5:
-            insights.append(InsightItem(
-                category=f"tarjeta:{sub}",
-                message=f"Tus consumos con tarjeta en {label} crecieron {pct}%",
-                change_percent=pct, direction="up"
-            ))
-        elif direction == "down" and pct and pct < -5:
-            insights.append(InsightItem(
-                category=f"tarjeta:{sub}",
-                message=f"Tus consumos con tarjeta en {label} bajaron {abs(pct)}%",
-                change_percent=pct, direction="down"
-            ))
-
-    # Savings rate
-    if curr_inc_total > 0:
-        curr_savings = round(((curr_inc_total - curr_exp_total) / curr_inc_total) * 100, 1)
-        if prev_inc_total > 0:
-            prev_savings = round(((prev_inc_total - prev_exp_total) / prev_inc_total) * 100, 1)
-            diff = round(curr_savings - prev_savings, 1)
-            if abs(diff) > 1:
-                direction = "up" if diff > 0 else "down"
-                if diff > 0:
-                    msg = f"Tu tasa de ahorro mejoró: {curr_savings}% (era {prev_savings}%)"
-                else:
-                    msg = f"Tu tasa de ahorro bajó: {curr_savings}% (era {prev_savings}%)"
-                insights.append(InsightItem(category="ahorro", message=msg, change_percent=diff, direction=direction))
         else:
             insights.append(InsightItem(
-                category="ahorro",
-                message=f"Tu tasa de ahorro este mes es del {curr_savings}%",
-                direction="stable"
+                category=cat,
+                message=f"Mayor baja: {label} (-{abs(cat_pct)}%)",
+                change_percent=cat_pct, direction="down"
             ))
 
-    # Summary
+    # Summary - short
     if curr_exp_total > prev_exp_total:
-        summary = f"Este mes gastaste más que el anterior. Revisá las categorías que más crecieron."
+        summary = f"Gastaste mas que el mes anterior ({_fmt_ars(curr_exp_total)} vs {_fmt_ars(prev_exp_total)})"
     elif curr_exp_total < prev_exp_total:
-        summary = f"¡Buen mes! Gastaste menos que el mes anterior."
+        summary = f"Gastaste menos que el mes anterior ({_fmt_ars(curr_exp_total)} vs {_fmt_ars(prev_exp_total)})"
     else:
-        summary = "Tus gastos se mantuvieron similares al mes anterior."
+        summary = "Gastos similares al mes anterior"
 
     return PeriodInsightsResponse(
         period_id=period_id,
