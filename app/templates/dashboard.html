@@ -264,9 +264,13 @@
 
     <!-- Insights -->
     <div class="insights-section" id="insightsSection" style="display:none">
-        <div class="section-header"><h2 class="section-title">Analisis del mes</h2></div>
-        <div class="insight-summary" id="insightSummary"></div>
-        <div id="insightsList"></div>
+        <div class="section-header" style="cursor:pointer" onclick="toggleInsights()">
+            <h2 class="section-title"><span class="tc-toggle" id="insightsToggle">&#9654;</span> Analisis del mes</h2>
+        </div>
+        <div id="insightsBody" style="display:none">
+            <div class="insight-summary" id="insightSummary"></div>
+            <div id="insightsList"></div>
+        </div>
     </div>
 
     <!-- Transactions -->
@@ -719,6 +723,14 @@ function renderTxnRow(t) {
             <button class="btn btn-danger btn-sm" onclick="deleteTxn(${t.id})">x</button>
         </td>
     </tr>`;
+}
+
+function toggleInsights() {
+    const body = document.getElementById('insightsBody');
+    const toggle = document.getElementById('insightsToggle');
+    const isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? '' : 'none';
+    toggle.classList.toggle('open', isHidden);
 }
 
 function toggleTC() {
