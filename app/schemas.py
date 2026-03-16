@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import date
-from typing import Optional
+from typing import Optional, Union
 
 
 class MonthlyPeriodCreate(BaseModel):
@@ -33,7 +33,7 @@ class TransactionCreate(BaseModel):
     currency: str = "ARS"
     transaction_type: str  # income / expense
     category: str
-    date: Optional[date] = None
+    date: Union[date, None] = None
     is_fixed: bool = False
     notes: str = ""
 
