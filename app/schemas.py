@@ -58,10 +58,19 @@ class TransactionUpdate(BaseModel):
     transaction_type: Optional[str] = None
     category: Optional[str] = None
     subcategory: Optional[str] = None
-    date: Optional[date] = None
+    date: Optional[str] = None
     is_fixed: Optional[bool] = None
     notes: Optional[str] = None
     credit_card_id: Optional[int] = None
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def parse_date(cls, v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, date):
+            return v.isoformat()
+        return str(v)
 
 
 class TransactionResponse(BaseModel):

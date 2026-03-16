@@ -202,7 +202,10 @@ def update_transaction(txn_id: int, data: TransactionUpdate, db: Session = Depen
     txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
     if not txn:
         raise HTTPException(404, "Transaction not found")
-    for key, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    if "date" in updates and updates["date"] is not None:
+        updates["date"] = date.fromisoformat(updates["date"])
+    for key, value in updates.items():
         setattr(txn, key, value)
     db.commit()
     db.refresh(txn)
