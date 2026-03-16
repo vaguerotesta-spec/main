@@ -33,7 +33,7 @@ class TransactionCreate(BaseModel):
     currency: str = "ARS"
     transaction_type: str  # income / expense
     category: str
-    date: date = None
+    date: Optional[date] = None
     is_fixed: bool = False
     notes: str = ""
 
