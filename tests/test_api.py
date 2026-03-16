@@ -7,7 +7,6 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 
-# Use in-memory SQLite for tests with shared connection
 engine = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
@@ -30,16 +29,15 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
-    # Import models to ensure they're registered with Base
     import app.models  # noqa: F401
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
 
 
-def create_test_period(rate=1350.0):
+def create_test_period(rate=1350.0, year=2026, month=4):
     return client.post("/api/periods", json={
-        "year": 2026, "month": 4, "blue_dollar_rate": rate, "notes": ""
+        "year": year, "month": month, "blue_dollar_rate": rate, "notes": ""
     })
 
 
@@ -88,6 +86,17 @@ class TestTransactions:
         assert res.status_code == 201
         assert res.json()["amount"] == 915000
 
+    def test_create_transaction_with_subcategory(self):
+        pid = create_test_period().json()["id"]
+        res = client.post("/api/transactions", json={
+            "period_id": pid, "description": "Zara",
+            "amount": 50000, "currency": "ARS",
+            "transaction_type": "expense", "category": "tarjeta",
+            "subcategory": "indumentaria", "notes": ""
+        })
+        assert res.status_code == 201
+        assert res.json()["subcategory"] == "indumentaria"
+
     def test_list_transactions_by_period(self):
         pid = create_test_period().json()["id"]
         client.post("/api/transactions", json={
@@ -114,7 +123,6 @@ class TestTransactions:
 class TestSummary:
     def test_monthly_summary(self):
         pid = create_test_period(rate=1350.0).json()["id"]
-        # Income
         client.post("/api/transactions", json={
             "period_id": pid, "description": "Salario USD",
             "amount": 1750, "currency": "USD",
@@ -127,7 +135,6 @@ class TestSummary:
             "transaction_type": "income", "category": "salary_ars",
             "notes": ""
         })
-        # Expense
         client.post("/api/transactions", json={
             "period_id": pid, "description": "Alquiler",
             "amount": 915000, "currency": "ARS",
@@ -162,6 +169,197 @@ class TestCategories:
         data = res.json()
         assert "rent" in data
         assert data["rent"] == "Alquiler"
+
+    def test_list_card_subcategories(self):
+        res = client.get("/api/card-subcategories")
+        assert res.status_code == 200
+        data = res.json()
+        assert "indumentaria" in data
+        assert data["indumentaria"] == "Indumentaria"
+
+
+class TestCardPurchases:
+    def test_create_card_purchase_creates_installments(self):
+        pid = create_test_period(year=2026, month=4).json()["id"]
+        res = client.post("/api/card-purchases", json={
+            "description": "Zapatillas",
+            "total_amount": 300000,
+            "installments_total": 6,
+            "installment_current": 4,
+            "subcategory": "indumentaria",
+            "period_id": pid,
+        })
+        assert res.status_code == 201
+        data = res.json()
+        assert data["installment_amount"] == 50000
+        assert data["installments_total"] == 6
+
+        # Should create 3 transactions (cuotas 4, 5, 6)
+        txns = client.get(f"/api/transactions?period_id={pid}").json()
+        assert len(txns) == 1  # cuota 4 in April
+        assert "cuota 4/6" in txns[0]["description"]
+        assert txns[0]["subcategory"] == "indumentaria"
+        assert txns[0]["installment_number"] == 4
+
+        # May and June periods should have been created
+        periods = client.get("/api/periods").json()
+        assert len(periods) == 3  # April, May, June
+
+    def test_card_purchase_amounts(self):
+        pid = create_test_period(year=2026, month=3).json()["id"]
+        client.post("/api/card-purchases", json={
+            "description": "TV",
+            "total_amount": 600000,
+            "installments_total": 3,
+            "installment_current": 1,
+            "subcategory": "tecnologia",
+            "period_id": pid,
+        })
+        # 3 installments of 200000 in March, April, May
+        periods = client.get("/api/periods").json()
+        assert len(periods) == 3
+
+        for p in periods:
+            txns = client.get(f"/api/transactions?period_id={p['id']}").json()
+            assert len(txns) == 1
+            assert txns[0]["amount"] == 200000
+
+    def test_card_purchase_year_rollover(self):
+        pid = create_test_period(year=2026, month=11).json()["id"]
+        client.post("/api/card-purchases", json={
+            "description": "Viaje",
+            "total_amount": 900000,
+            "installments_total": 3,
+            "installment_current": 1,
+            "subcategory": "viajes",
+            "period_id": pid,
+        })
+        periods = client.get("/api/periods").json()
+        year_months = sorted([(p["year"], p["month"]) for p in periods])
+        assert (2026, 11) in year_months
+        assert (2026, 12) in year_months
+        assert (2027, 1) in year_months
+
+    def test_delete_card_purchase_removes_transactions(self):
+        pid = create_test_period(year=2026, month=6).json()["id"]
+        res = client.post("/api/card-purchases", json={
+            "description": "Compra",
+            "total_amount": 150000,
+            "installments_total": 3,
+            "installment_current": 1,
+            "subcategory": "otros",
+            "period_id": pid,
+        })
+        purchase_id = res.json()["id"]
+        client.delete(f"/api/card-purchases/{purchase_id}")
+        txns = client.get("/api/transactions").json()
+        assert len(txns) == 0
+
+    def test_invalid_installment_current(self):
+        pid = create_test_period().json()["id"]
+        res = client.post("/api/card-purchases", json={
+            "description": "Test",
+            "total_amount": 100000,
+            "installments_total": 3,
+            "installment_current": 5,
+            "subcategory": "otros",
+            "period_id": pid,
+        })
+        assert res.status_code == 400
+
+
+class TestInsights:
+    def test_insights_no_previous_period(self):
+        pid = create_test_period(year=2026, month=4).json()["id"]
+        client.post("/api/transactions", json={
+            "period_id": pid, "description": "Salario",
+            "amount": 400000, "currency": "ARS",
+            "transaction_type": "income", "category": "salary_ars",
+            "notes": ""
+        })
+        res = client.get(f"/api/insights/{pid}")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["previous_period_id"] is None
+        assert "primer mes" in data["summary"]
+
+    def test_insights_compares_two_periods(self):
+        # March
+        p1 = create_test_period(year=2026, month=3).json()["id"]
+        client.post("/api/transactions", json={
+            "period_id": p1, "description": "Alquiler",
+            "amount": 800000, "currency": "ARS",
+            "transaction_type": "expense", "category": "rent",
+            "notes": ""
+        })
+        client.post("/api/transactions", json={
+            "period_id": p1, "description": "Salario",
+            "amount": 400000, "currency": "ARS",
+            "transaction_type": "income", "category": "salary_ars",
+            "notes": ""
+        })
+        # April (expenses went up)
+        p2 = create_test_period(year=2026, month=4).json()["id"]
+        client.post("/api/transactions", json={
+            "period_id": p2, "description": "Alquiler",
+            "amount": 915000, "currency": "ARS",
+            "transaction_type": "expense", "category": "rent",
+            "notes": ""
+        })
+        client.post("/api/transactions", json={
+            "period_id": p2, "description": "Salario",
+            "amount": 400000, "currency": "ARS",
+            "transaction_type": "income", "category": "salary_ars",
+            "notes": ""
+        })
+        res = client.get(f"/api/insights/{p2}")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["previous_period_id"] == p1
+        assert len(data["insights"]) > 0
+        # Should mention expenses went up
+        msgs = [i["message"] for i in data["insights"]]
+        assert any("subieron" in m for m in msgs)
+
+    def test_insights_card_subcategory(self):
+        p1 = create_test_period(year=2026, month=3).json()["id"]
+        client.post("/api/transactions", json={
+            "period_id": p1, "description": "Zara",
+            "amount": 50000, "currency": "ARS",
+            "transaction_type": "expense", "category": "tarjeta",
+            "subcategory": "indumentaria", "notes": ""
+        })
+        p2 = create_test_period(year=2026, month=4).json()["id"]
+        client.post("/api/transactions", json={
+            "period_id": p2, "description": "Zara + H&M",
+            "amount": 80000, "currency": "ARS",
+            "transaction_type": "expense", "category": "tarjeta",
+            "subcategory": "indumentaria", "notes": ""
+        })
+        res = client.get(f"/api/insights/{p2}")
+        data = res.json()
+        msgs = [i["message"] for i in data["insights"]]
+        assert any("Indumentaria" in m for m in msgs)
+
+    def test_insights_new_category(self):
+        p1 = create_test_period(year=2026, month=3).json()["id"]
+        client.post("/api/transactions", json={
+            "period_id": p1, "description": "Alquiler",
+            "amount": 800000, "currency": "ARS",
+            "transaction_type": "expense", "category": "rent",
+            "notes": ""
+        })
+        p2 = create_test_period(year=2026, month=4).json()["id"]
+        client.post("/api/transactions", json={
+            "period_id": p2, "description": "EPEC",
+            "amount": 55000, "currency": "ARS",
+            "transaction_type": "expense", "category": "epec",
+            "notes": ""
+        })
+        res = client.get(f"/api/insights/{p2}")
+        data = res.json()
+        msgs = [i["message"] for i in data["insights"]]
+        assert any("EPEC" in m for m in msgs)
 
 
 class TestDashboard:

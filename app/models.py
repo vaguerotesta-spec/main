@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, Date, Boolean, Enum as SAEnum
+from sqlalchemy import Column, Integer, Float, String, Date, Boolean
 from datetime import date
 import enum
 
@@ -49,6 +49,35 @@ CATEGORY_LABELS = {
 }
 
 
+class CardSubcategory(str, enum.Enum):
+    INDUMENTARIA = "indumentaria"
+    SUPERMERCADO = "supermercado"
+    RESTAURANTES = "restaurantes"
+    ENTRETENIMIENTO = "entretenimiento"
+    SALUD = "salud"
+    TRANSPORTE = "transporte"
+    HOGAR = "hogar"
+    TECNOLOGIA = "tecnologia"
+    EDUCACION = "educacion"
+    VIAJES = "viajes"
+    OTROS = "otros"
+
+
+CARD_SUBCATEGORY_LABELS = {
+    "indumentaria": "Indumentaria",
+    "supermercado": "Supermercado",
+    "restaurantes": "Restaurantes",
+    "entretenimiento": "Entretenimiento",
+    "salud": "Salud",
+    "transporte": "Transporte",
+    "hogar": "Hogar",
+    "tecnologia": "Tecnología",
+    "educacion": "Educación",
+    "viajes": "Viajes",
+    "otros": "Otros",
+}
+
+
 class MonthlyPeriod(Base):
     __tablename__ = "monthly_periods"
 
@@ -67,8 +96,24 @@ class Transaction(Base):
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     currency = Column(String, nullable=False, default="ARS")
-    transaction_type = Column(String, nullable=False)  # income / expense
+    transaction_type = Column(String, nullable=False)
     category = Column(String, nullable=False)
+    subcategory = Column(String, nullable=True, default=None)
     date = Column(Date, default=date.today)
     is_fixed = Column(Boolean, default=False)
     notes = Column(String, default="")
+    card_purchase_id = Column(Integer, nullable=True, default=None)
+    installment_number = Column(Integer, nullable=True, default=None)
+
+
+class CardPurchase(Base):
+    __tablename__ = "card_purchases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    description = Column(String, nullable=False)
+    total_amount = Column(Float, nullable=False)
+    installments_total = Column(Integer, nullable=False)
+    installment_amount = Column(Float, nullable=False)
+    subcategory = Column(String, nullable=True, default="otros")
+    date = Column(Date, default=date.today)
+    source_period_id = Column(Integer, nullable=False)
