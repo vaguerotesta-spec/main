@@ -659,7 +659,7 @@ function renderTransactions(txns) {
             </td>
             <td class="amount-expense">- ${fmt(cardTotal)}</td>
             <td><span class="badge badge-expense">Gasto</span></td>
-            <td></td>
+            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteAllCardTxns()" title="Borrar todos los consumos TC">x</button></td>
         </tr>`;
         // Group by credit card
         const cardMap = new Map();
@@ -791,6 +791,13 @@ async function saveTxn() {
 async function deleteTxn(id) {
     if (!confirm('Eliminar este movimiento?')) return;
     await api(`/transactions/${id}`, { method: 'DELETE' }); await loadPeriod();
+}
+async function deleteAllCardTxns() {
+    if (!confirm('Eliminar TODOS los consumos de tarjeta de este mes?')) return;
+    try {
+        await api(`/transactions/card-bulk/${currentPeriodId}`, { method: 'DELETE' });
+        await loadPeriod();
+    } catch (e) { alert('Error: ' + e.message); }
 }
 
 // ── Card Purchase Modal ─────────────────────────────────

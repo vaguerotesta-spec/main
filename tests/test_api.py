@@ -120,6 +120,33 @@ class TestTransactions:
         assert res.status_code == 204
 
 
+    def test_delete_all_card_transactions(self):
+        pid = create_test_period().json()["id"]
+        # Create 2 card txns and 1 non-card txn
+        client.post("/api/transactions", json={
+            "period_id": pid, "description": "Zara", "amount": 50000,
+            "currency": "ARS", "transaction_type": "expense",
+            "category": "tarjeta", "notes": ""
+        })
+        client.post("/api/transactions", json={
+            "period_id": pid, "description": "Spotify", "amount": 2500,
+            "currency": "ARS", "transaction_type": "expense",
+            "category": "tarjeta", "notes": ""
+        })
+        client.post("/api/transactions", json={
+            "period_id": pid, "description": "Alquiler", "amount": 915000,
+            "currency": "ARS", "transaction_type": "expense",
+            "category": "rent", "notes": ""
+        })
+        res = client.delete(f"/api/transactions/card-bulk/{pid}")
+        assert res.status_code == 200
+        assert res.json()["count"] == 2
+        # Only the non-card txn should remain
+        txns = client.get(f"/api/transactions?period_id={pid}").json()
+        assert len(txns) == 1
+        assert txns[0]["category"] == "rent"
+
+
 class TestSummary:
     def test_monthly_summary(self):
         pid = create_test_period(rate=1350.0).json()["id"]

@@ -209,6 +209,17 @@ def update_transaction(txn_id: int, data: TransactionUpdate, db: Session = Depen
     return txn
 
 
+@router.delete("/transactions/card-bulk/{period_id}", status_code=200)
+def delete_all_card_transactions(period_id: int, db: Session = Depends(get_db)):
+    """Delete all tarjeta transactions for a given period."""
+    count = db.query(Transaction).filter(
+        Transaction.period_id == period_id,
+        Transaction.category == "tarjeta",
+    ).delete()
+    db.commit()
+    return {"message": f"Se eliminaron {count} consumos de tarjeta", "count": count}
+
+
 @router.delete("/transactions/{txn_id}", status_code=204)
 def delete_transaction(txn_id: int, db: Session = Depends(get_db)):
     txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
