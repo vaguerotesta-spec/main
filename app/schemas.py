@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from datetime import date
+from pydantic import BaseModel, field_validator
+from datetime import date, datetime
 from typing import Optional, Union
 
 
@@ -34,11 +34,20 @@ class TransactionCreate(BaseModel):
     transaction_type: str
     category: str
     subcategory: Optional[str] = None
-    date: Union[date, None] = None
+    date: str = ""
     is_fixed: bool = False
     notes: str = ""
     card_purchase_id: Optional[int] = None
     installment_number: Optional[int] = None
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def parse_date(cls, v):
+        if not v or v == "":
+            return ""
+        if isinstance(v, date):
+            return v.isoformat()
+        return str(v)
 
 
 class TransactionUpdate(BaseModel):
@@ -94,7 +103,16 @@ class CardPurchaseCreate(BaseModel):
     installment_current: int
     subcategory: str = "otros"
     period_id: int
-    date: Union[date, None] = None
+    date: str = ""
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def parse_date(cls, v):
+        if not v or v == "" or v is None:
+            return ""
+        if isinstance(v, date):
+            return v.isoformat()
+        return str(v)
 
 
 class CardPurchaseResponse(BaseModel):

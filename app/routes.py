@@ -166,8 +166,10 @@ def create_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
     if not period:
         raise HTTPException(404, "Period not found")
     dump = data.model_dump()
-    if dump["date"] is None:
+    if not dump["date"]:
         dump["date"] = date.today()
+    elif isinstance(dump["date"], str):
+        dump["date"] = date.fromisoformat(dump["date"])
     txn = Transaction(**dump)
     db.add(txn)
     db.commit()
@@ -306,7 +308,7 @@ def create_card_purchase(data: CardPurchaseCreate, db: Session = Depends(get_db)
         raise HTTPException(400, "Cuota actual debe estar entre 1 y el total de cuotas")
 
     installment_amount = round(data.total_amount / data.installments_total, 2)
-    purchase_date = data.date or date(period.year, period.month, 1)
+    purchase_date = date.fromisoformat(data.date) if data.date else date(period.year, period.month, 1)
 
     purchase = CardPurchase(
         description=data.description,
