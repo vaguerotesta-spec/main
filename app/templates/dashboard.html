@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Finanzas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --beige: #F5F0EB;
@@ -207,11 +208,13 @@
         .progress-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease; }
         .empty-state { text-align: center; padding: 3rem 1rem; color: var(--gray); }
         .empty-state p { margin-bottom: 1rem; }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 640px) {
             header { padding: 1rem; flex-direction: column; gap: 0.75rem; }
             .container { padding: 1rem; }
             .form-row { grid-template-columns: 1fr; }
             .summary-grid { grid-template-columns: 1fr 1fr; }
+            .charts-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -258,6 +261,22 @@
             <div class="card-value text-pink" id="blueRate">$0</div>
             <div class="card-sub" style="margin-top:0.5rem">
                 <button class="btn btn-sm btn-primary" onclick="editRate()">Cambiar cotizacion</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="section" id="chartsSection" style="display:none">
+        <div class="section-header">
+            <h2 class="section-title">Resumen visual</h2>
+        </div>
+        <div class="charts-grid">
+            <div style="position:relative;max-height:280px;display:flex;align-items:center;justify-content:center">
+                <canvas id="chartExpenses"></canvas>
+            </div>
+            <div>
+                <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.75rem;color:var(--gray)">Gastos por categoria</div>
+                <div id="categoryBars"></div>
             </div>
         </div>
     </div>
@@ -642,15 +661,17 @@ async function loadPeriods() {
 async function loadPeriod() {
     const id = document.getElementById('periodSelect').value;
     if (!id) {
-        ['summaryCards','txnSection','insightsSection'].forEach(s => document.getElementById(s).style.display = 'none');
+        ['summaryCards','txnSection','insightsSection','chartsSection'].forEach(s => document.getElementById(s).style.display = 'none');
         return;
     }
     currentPeriodId = parseInt(id);
     const summary = await api(`/summary/${id}`);
     renderSummary(summary);
     renderTransactions(summary.transactions);
+    renderCharts(summary);
     document.getElementById('summaryCards').style.display = '';
     document.getElementById('txnSection').style.display = '';
+    document.getElementById('chartsSection').style.display = '';
     document.getElementById('btnSeed').style.display = '';
     document.getElementById('btnNL').style.display = '';
     loadInsights();
@@ -673,6 +694,79 @@ function renderSummary(s) {
     document.getElementById('balancePct').textContent = `${pct.toFixed(0)}% de ingresos gastados`;
     document.getElementById('blueRate').textContent = fmt(s.period.blue_dollar_rate);
     document.getElementById('rateDisplay').textContent = `1 USD = ${fmt(s.period.blue_dollar_rate)}`;
+}
+
+let expensesChart = null;
+
+function renderCharts(s) {
+    const rate = s.period.blue_dollar_rate;
+    // Group expenses by category
+    const catTotals = {};
+    for (const t of s.transactions) {
+        if (t.transaction_type !== 'expense') continue;
+        const amt = t.currency === 'USD' ? t.amount * rate : t.amount;
+        const label = categories[t.category] || t.category;
+        catTotals[label] = (catTotals[label] || 0) + amt;
+    }
+
+    const sorted = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+    if (sorted.length === 0) {
+        document.getElementById('chartsSection').style.display = 'none';
+        return;
+    }
+
+    const colors = ['#B07A7A','#D4A5A5','#C4BAA8','#9E9893','#A8C5A0','#7B5EA7','#5C5652','#F2E0E0','#6B9B60','#E8E4E0','#e8e0f2','#F5F0EB'];
+    const labels = sorted.map(e => e[0]);
+    const values = sorted.map(e => e[1]);
+    const maxVal = Math.max(...values);
+
+    // Donut chart
+    const ctx = document.getElementById('chartExpenses');
+    if (expensesChart) expensesChart.destroy();
+    expensesChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors.slice(0, labels.length),
+                borderWidth: 2,
+                borderColor: '#fff',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.label}: ${fmt(ctx.parsed)}`
+                    }
+                }
+            }
+        }
+    });
+
+    // Category bars
+    const barsEl = document.getElementById('categoryBars');
+    barsEl.innerHTML = sorted.map(([label, val], i) => {
+        const pct = maxVal > 0 ? (val / maxVal) * 100 : 0;
+        const color = colors[i % colors.length];
+        return `
+        <div style="margin-bottom:0.5rem">
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.15rem">
+                <span style="display:flex;align-items:center;gap:0.4rem">
+                    <span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block"></span>
+                    ${label}
+                </span>
+                <span style="font-weight:600">${fmt(val)}</span>
+            </div>
+            <div style="width:100%;height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden">
+                <div style="width:${pct}%;height:100%;background:${color};border-radius:3px"></div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function renderTransactions(txns) {
