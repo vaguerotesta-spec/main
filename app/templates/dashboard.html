@@ -560,9 +560,14 @@ async function createPeriod() {
     const year = parseInt(document.getElementById('pYear').value);
     const month = parseInt(document.getElementById('pMonth').value);
     const rate = parseFloat(document.getElementById('pRate').value);
-    await api('/periods', { method: 'POST', body: JSON.stringify({ year, month, blue_dollar_rate: rate, notes: '' }) });
-    closePeriodModal();
-    await loadPeriods();
+    if (!rate || rate <= 0) { alert('Ingresá una cotización válida'); return; }
+    try {
+        await api('/periods', { method: 'POST', body: JSON.stringify({ year, month, blue_dollar_rate: rate, notes: '' }) });
+        closePeriodModal();
+        await loadPeriods();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
 }
 
 // ── Transaction Modal ───────────────────────────────────
@@ -580,20 +585,32 @@ function closeTxnModal() {
     document.getElementById('txnModal').classList.remove('active');
 }
 async function saveTxn() {
+    const desc = document.getElementById('tDesc').value.trim();
+    const amount = parseFloat(document.getElementById('tAmount').value);
+    const dateVal = document.getElementById('tDate').value;
+
+    if (!desc) { alert('Completá la descripción'); return; }
+    if (!amount || isNaN(amount) || amount <= 0) { alert('Ingresá un monto válido'); return; }
+    if (!dateVal) { alert('Seleccioná una fecha'); return; }
+
     const data = {
         period_id: currentPeriodId,
-        description: document.getElementById('tDesc').value,
-        amount: parseFloat(document.getElementById('tAmount').value),
+        description: desc,
+        amount: amount,
         currency: document.getElementById('tCurrency').value,
         transaction_type: document.getElementById('tType').value,
         category: document.getElementById('tCategory').value,
-        date: document.getElementById('tDate').value,
+        date: dateVal,
         notes: document.getElementById('tNotes').value,
         is_fixed: false,
     };
-    await api('/transactions', { method: 'POST', body: JSON.stringify(data) });
-    closeTxnModal();
-    await loadPeriod();
+    try {
+        await api('/transactions', { method: 'POST', body: JSON.stringify(data) });
+        closeTxnModal();
+        await loadPeriod();
+    } catch (e) {
+        alert('Error al guardar: ' + e.message);
+    }
 }
 async function deleteTxn(id) {
     if (!confirm('¿Eliminar este movimiento?')) return;
@@ -604,8 +621,12 @@ async function deleteTxn(id) {
 // ── Seed defaults ───────────────────────────────────────
 async function seedDefaults() {
     if (!confirm('¿Cargar ingresos y gastos fijos del mes?')) return;
-    await api(`/periods/${currentPeriodId}/seed-defaults`, { method: 'POST' });
-    await loadPeriod();
+    try {
+        await api(`/periods/${currentPeriodId}/seed-defaults`, { method: 'POST' });
+        await loadPeriod();
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
 }
 
 // ── Edit rate ───────────────────────────────────────────
