@@ -595,7 +595,21 @@ async function loadPeriods() {
         const opt = document.createElement('option');
         opt.value = p.id; opt.textContent = `${MONTHS[p.month]} ${p.year}`; sel.appendChild(opt);
     }
-    if (periods.length > 0) { sel.value = periods[0].id; loadPeriod(); }
+    if (periods.length > 0) {
+        // Select current month or closest past month
+        const now = new Date();
+        const currYear = now.getFullYear();
+        const currMonth = now.getMonth() + 1;
+        let best = periods[0];
+        for (const p of periods) {
+            if (p.year < currYear || (p.year === currYear && p.month <= currMonth)) {
+                best = p;
+                break;
+            }
+        }
+        sel.value = best.id;
+        loadPeriod();
+    }
     document.getElementById('emptyState').style.display = periods.length === 0 ? '' : 'none';
 }
 
