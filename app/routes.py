@@ -501,6 +501,16 @@ def get_insights(period_id: int, db: Session = Depends(get_db)):
                 message=f"Tu tasa de ahorro este mes es del {savings}%",
                 direction="stable"
             ))
+        total_card = sum(
+            (t.amount * period.blue_dollar_rate if t.currency == "USD" else t.amount)
+            for t in curr_txns if t.transaction_type == "expense" and t.category == "tarjeta"
+        )
+        if total_card > 0:
+            insights.append(InsightItem(
+                category="tarjeta",
+                message=f"Gastos con tarjeta este mes: {_fmt_ars(total_card)}",
+                direction="stable"
+            ))
         return PeriodInsightsResponse(
             period_id=period_id,
             previous_period_id=None,
@@ -552,7 +562,37 @@ def get_insights(period_id: int, db: Session = Depends(get_db)):
             direction="up" if curr_savings > 20 else "down" if curr_savings < 5 else "stable"
         ))
 
-    # 3. Top category that changed most (only the biggest mover)
+    # 3. Card expenses (tarjeta) comparison
+    curr_card_total = sum(
+        (t.amount * rate_curr if t.currency == "USD" else t.amount)
+        for t in curr_txns if t.transaction_type == "expense" and t.category == "tarjeta"
+    )
+    prev_card_total = sum(
+        (t.amount * rate_prev if t.currency == "USD" else t.amount)
+        for t in prev_txns if t.transaction_type == "expense" and t.category == "tarjeta"
+    )
+    card_pct, card_dir = _pct_change(prev_card_total, curr_card_total)
+    if card_pct is not None and card_dir != "stable":
+        if card_dir == "down":
+            insights.append(InsightItem(
+                category="tarjeta",
+                message=f"Este mes los gastos con tarjeta bajaron un {abs(card_pct)}%, en pesos eso es un total de {_fmt_ars(curr_card_total)} (antes {_fmt_ars(prev_card_total)})",
+                change_percent=card_pct, direction="down"
+            ))
+        else:
+            insights.append(InsightItem(
+                category="tarjeta",
+                message=f"Este mes los gastos con tarjeta subieron un {abs(card_pct)}%, en pesos eso es un total de {_fmt_ars(curr_card_total)} (antes {_fmt_ars(prev_card_total)})",
+                change_percent=card_pct, direction="up"
+            ))
+    elif card_pct is not None:
+        insights.append(InsightItem(
+            category="tarjeta",
+            message=f"Gastos con tarjeta estables: {_fmt_ars(curr_card_total)}",
+            change_percent=card_pct, direction="stable"
+        ))
+
+    # 4. Top category that changed most (only the biggest mover)
     curr_cats = _category_totals(curr_txns, rate_curr)
     prev_cats = _category_totals(prev_txns, rate_prev)
     all_cats = set(list(curr_cats.keys()) + list(prev_cats.keys()))
