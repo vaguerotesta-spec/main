@@ -1,0 +1,8 @@
+Extract the top ATS keywords from the following job description.
+Return ONLY a JSON array of strings (no extra text), ordered from most important to least important.
+Include: required skills, tools, technologies, methodologies, certifications, and role-specific terms.
+Exclude: generic words like "team", "communication", "motivated", etc.
+Maximum 20 keywords.
+Job Description:
+{job_description}
+Return format: ["keyword1", "keyword2", ...]
