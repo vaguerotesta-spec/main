@@ -214,6 +214,7 @@ class StatementImportRequest(BaseModel):
     period_id: int
     lines: list[StatementLinePreview]
     credit_card_id: Optional[int] = None
+    skip_duplicates: bool = True
 
 
 # ── Natural Language Parser ──────────────────────────────

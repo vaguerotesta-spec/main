@@ -1059,11 +1059,12 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
 
         # Check for duplicate: same base description + similar amount already exists
         # For cuotas, also check across all periods (future cuotas may already exist)
-        check_against = all_cuota_txns if (line.installment_current and line.installment_total) else existing_txns
-        is_duplicate = _find_duplicate(check_against, line)
-        if is_duplicate:
-            skipped += 1
-            continue
+        if data.skip_duplicates:
+            check_against = all_cuota_txns if (line.installment_current and line.installment_total) else existing_txns
+            is_duplicate = _find_duplicate(check_against, line)
+            if is_duplicate:
+                skipped += 1
+                continue
 
         if line.installment_current and line.installment_total and line.installment_total > 1:
             # This is a cuota — create CardPurchase + future installments

@@ -450,8 +450,12 @@ ZARA                       $89.000,00
 CARREFOUR      15/03       $32.500,00
 YPF ESTACION               $28.000,00"></textarea>
         </div>
-        <div class="modal-actions" style="margin-top:0.5rem;margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
             <button class="btn btn-secondary btn-sm" onclick="parseStatement()">Analizar texto</button>
+            <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer;margin-left:auto">
+                <input type="checkbox" id="stmtSkipDuplicates" checked>
+                Omitir gastos repetidos
+            </label>
         </div>
 
         <div id="stmtPreview" style="display:none">
@@ -1137,12 +1141,14 @@ async function importStatement() {
     if (!confirm(`Importar ${parsedLines.length} consumos de tarjeta?`)) return;
     const cardId = document.getElementById('stmtCardSelect').value;
     try {
+        const skipDuplicates = document.getElementById('stmtSkipDuplicates').checked;
         const res = await api('/statement/import', {
             method: 'POST',
             body: JSON.stringify({
                 period_id: currentPeriodId,
                 lines: parsedLines,
                 credit_card_id: cardId ? parseInt(cardId) : null,
+                skip_duplicates: skipDuplicates,
             }),
         });
         alert(res.message);
