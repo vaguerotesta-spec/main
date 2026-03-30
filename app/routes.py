@@ -227,6 +227,187 @@ def delete_all_card_transactions(period_id: int, db: Session = Depends(get_db)):
     return {"message": f"Se eliminaron {count} consumos de tarjeta", "count": count}
 
 
+@router.get("/undo-last-import/preview", status_code=200)
+def preview_undo_last_import(db: Session = Depends(get_db)):
+    """Preview what the undo-last-import endpoint would delete."""
+    last_imported = (
+        db.query(Transaction)
+        .filter(
+            Transaction.category == "tarjeta",
+            Transaction.notes == "Importado desde resumen de tarjeta",
+        )
+        .order_by(Transaction.id.desc())
+        .first()
+    )
+    if not last_imported:
+        return {"message": "No hay importaciones de tarjeta", "transactions": [], "count": 0}
+
+    max_id = last_imported.id
+    period_id = last_imported.period_id
+
+    all_imported_in_period = (
+        db.query(Transaction)
+        .filter(
+            Transaction.period_id == period_id,
+            Transaction.category == "tarjeta",
+            Transaction.notes == "Importado desde resumen de tarjeta",
+        )
+        .order_by(Transaction.id.desc())
+        .all()
+    )
+
+    batch_ids = []
+    prev_id = max_id + 1
+    for txn in all_imported_in_period:
+        if prev_id - txn.id <= 5:
+            batch_ids.append(txn.id)
+            prev_id = txn.id
+        else:
+            break
+
+    purchase_ids = set()
+    for txn in all_imported_in_period:
+        if txn.id in set(batch_ids) and txn.card_purchase_id is not None:
+            purchase_ids.add(txn.card_purchase_id)
+
+    future_txn_ids = []
+    if purchase_ids:
+        future_txns = db.query(Transaction).filter(
+            Transaction.card_purchase_id.in_(purchase_ids)
+        ).all()
+        future_txn_ids = [t.id for t in future_txns]
+
+    all_ids = set(batch_ids) | set(future_txn_ids)
+    to_delete = db.query(Transaction).filter(Transaction.id.in_(all_ids)).all()
+
+    by_period = {}
+    for t in to_delete:
+        by_period.setdefault(t.period_id, []).append(t)
+
+    transactions = []
+    for t in sorted(to_delete, key=lambda x: x.id):
+        p = db.query(MonthlyPeriod).filter(MonthlyPeriod.id == t.period_id).first()
+        transactions.append({
+            "id": t.id,
+            "period": f"{p.year}-{p.month:02d}" if p else str(t.period_id),
+            "description": t.description,
+            "amount": t.amount,
+        })
+
+    return {
+        "message": f"Se eliminarian {len(to_delete)} transacciones en {len(by_period)} periodo(s)",
+        "count": len(to_delete),
+        "card_purchases": len(purchase_ids),
+        "transactions": transactions,
+    }
+
+
+@router.delete("/undo-last-import", status_code=200)
+def undo_last_import(db: Session = Depends(get_db)):
+    """One-time cleanup: find the most recent block of imported card transactions
+    (identified by highest consecutive IDs with import notes) and delete them
+    along with their CardPurchase records and future cuota transactions.
+
+    This works even for imports that predate the import_batch_id feature.
+    """
+    # Find the highest-ID tarjeta transaction that was imported
+    last_imported = (
+        db.query(Transaction)
+        .filter(
+            Transaction.category == "tarjeta",
+            Transaction.notes == "Importado desde resumen de tarjeta",
+        )
+        .order_by(Transaction.id.desc())
+        .first()
+    )
+    if not last_imported:
+        raise HTTPException(404, "No se encontraron importaciones de tarjeta")
+
+    max_id = last_imported.id
+    period_id = last_imported.period_id
+
+    # Find all imported tarjeta txns in that same period that form the latest block
+    # (contiguous high IDs) — these are from the last import session
+    all_imported_in_period = (
+        db.query(Transaction)
+        .filter(
+            Transaction.period_id == period_id,
+            Transaction.category == "tarjeta",
+            Transaction.notes == "Importado desde resumen de tarjeta",
+        )
+        .order_by(Transaction.id.desc())
+        .all()
+    )
+
+    # Identify the contiguous block from the top
+    # (there might be older imports with a gap in IDs)
+    batch_ids = []
+    prev_id = max_id + 1
+    for txn in all_imported_in_period:
+        # Allow small gaps (cuota transactions in other periods may interleave)
+        if prev_id - txn.id <= 5:
+            batch_ids.append(txn.id)
+            prev_id = txn.id
+        else:
+            break
+
+    # Collect card_purchase_ids from these transactions
+    purchase_ids = set()
+    for txn in all_imported_in_period:
+        if txn.id in set(batch_ids) and txn.card_purchase_id is not None:
+            purchase_ids.add(txn.card_purchase_id)
+
+    # Also find ALL transactions linked to these card purchases (future cuotas in other periods)
+    future_txn_ids = []
+    if purchase_ids:
+        future_txns = (
+            db.query(Transaction)
+            .filter(Transaction.card_purchase_id.in_(purchase_ids))
+            .all()
+        )
+        future_txn_ids = [t.id for t in future_txns]
+
+    # Merge all IDs to delete
+    all_ids_to_delete = set(batch_ids) | set(future_txn_ids)
+
+    # Preview what we'll delete
+    to_delete = (
+        db.query(Transaction)
+        .filter(Transaction.id.in_(all_ids_to_delete))
+        .all()
+    )
+
+    # Group by period for the response
+    by_period = {}
+    for t in to_delete:
+        by_period.setdefault(t.period_id, []).append(t)
+
+    period_info = []
+    for pid, txns in sorted(by_period.items()):
+        p = db.query(MonthlyPeriod).filter(MonthlyPeriod.id == pid).first()
+        period_label = f"{p.year}-{p.month:02d}" if p else f"period {pid}"
+        period_info.append(f"{period_label}: {len(txns)} transacciones")
+
+    # Delete
+    count = db.query(Transaction).filter(Transaction.id.in_(all_ids_to_delete)).delete(
+        synchronize_session=False
+    )
+    if purchase_ids:
+        db.query(CardPurchase).filter(CardPurchase.id.in_(purchase_ids)).delete(
+            synchronize_session=False
+        )
+
+    db.commit()
+
+    detail = "; ".join(period_info)
+    return {
+        "message": f"Se eliminaron {count} transacciones de la ultima importacion ({detail})",
+        "count": count,
+        "periods_affected": list(by_period.keys()),
+        "card_purchases_deleted": len(purchase_ids),
+    }
+
+
 @router.get("/import-batches/{period_id}", response_model=list[ImportBatchResponse])
 def list_import_batches(period_id: int, db: Session = Depends(get_db)):
     """List import batches for a given period, most recent first."""
