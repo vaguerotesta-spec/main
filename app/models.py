@@ -105,6 +105,7 @@ class Transaction(Base):
     card_purchase_id = Column(Integer, nullable=True, default=None)
     installment_number = Column(Integer, nullable=True, default=None)
     credit_card_id = Column(Integer, nullable=True, default=None)
+    import_batch_id = Column(String, nullable=True, default=None)
 
 
 class CardPurchase(Base):

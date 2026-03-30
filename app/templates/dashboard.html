@@ -799,7 +799,10 @@ function renderTransactions(txns) {
             </td>
             <td class="amount-expense">- ${fmt(cardTotal)}</td>
             <td><span class="badge badge-expense">Gasto</span></td>
-            <td><button class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.75rem;white-space:nowrap" onclick="event.stopPropagation(); deleteAllCardTxns()">Borrar todos</button></td>
+            <td>
+                <button class="btn btn-sm" style="background:#e67e22;color:#fff;font-size:0.75rem;white-space:nowrap;margin-right:4px" onclick="event.stopPropagation(); undoLastImport()">Deshacer importacion</button>
+                <button class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.75rem;white-space:nowrap" onclick="event.stopPropagation(); deleteAllCardTxns()">Borrar todos</button>
+            </td>
         </tr>`;
         // Group by credit card
         const cardMap = new Map();
@@ -997,6 +1000,20 @@ async function deleteAllCardTxns() {
         await loadPeriod();
     } catch (e) { alert('Error: ' + e.message); }
 }
+async function undoLastImport() {
+    try {
+        const batches = await api(`/import-batches/${currentPeriodId}`);
+        if (!batches || batches.length === 0) {
+            alert('No hay importaciones para deshacer en este mes.');
+            return;
+        }
+        const last = batches[0];
+        if (!confirm(`Deshacer la última importación? (${last.count} consumos, $${last.total_amount.toLocaleString('es-AR')})`)) return;
+        const res = await api(`/import-batches/${last.batch_id}`, { method: 'DELETE' });
+        alert(res.message);
+        await loadPeriod();
+    } catch (e) { alert('Error: ' + e.message); }
+}
 
 // ── Card Purchase Modal ─────────────────────────────────
 function openCardModal() {
@@ -1120,7 +1137,7 @@ async function importStatement() {
     if (!confirm(`Importar ${parsedLines.length} consumos de tarjeta?`)) return;
     const cardId = document.getElementById('stmtCardSelect').value;
     try {
-        await api('/statement/import', {
+        const res = await api('/statement/import', {
             method: 'POST',
             body: JSON.stringify({
                 period_id: currentPeriodId,
@@ -1128,6 +1145,7 @@ async function importStatement() {
                 credit_card_id: cardId ? parseInt(cardId) : null,
             }),
         });
+        alert(res.message);
         closeStatementModal();
         await loadPeriod();
     } catch (e) { alert('Error: ' + e.message); }

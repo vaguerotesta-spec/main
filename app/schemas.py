@@ -88,9 +88,19 @@ class TransactionResponse(BaseModel):
     card_purchase_id: Optional[int]
     installment_number: Optional[int]
     credit_card_id: Optional[int]
+    import_batch_id: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class ImportBatchResponse(BaseModel):
+    batch_id: str
+    period_id: int
+    count: int
+    total_amount: float
+    first_description: str
+    credit_card_id: Optional[int] = None
 
 
 class MonthlySummary(BaseModel):

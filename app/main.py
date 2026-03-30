@@ -18,6 +18,7 @@ _new_columns = [
     ("transactions", "card_purchase_id", "INTEGER"),
     ("transactions", "installment_number", "INTEGER"),
     ("transactions", "credit_card_id", "INTEGER"),
+    ("transactions", "import_batch_id", "TEXT"),
 ]
 with engine.connect() as conn:
     inspector = inspect(engine)

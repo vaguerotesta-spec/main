@@ -1,6 +1,8 @@
 import re
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import date
 
 from app.database import get_db
@@ -32,6 +34,7 @@ from app.schemas import (
     StatementParseResponse,
     StatementLinePreview,
     StatementImportRequest,
+    ImportBatchResponse,
     NLParseRequest,
     NLParseResponse,
     NLParseItem,
@@ -222,6 +225,64 @@ def delete_all_card_transactions(period_id: int, db: Session = Depends(get_db)):
     ).delete()
     db.commit()
     return {"message": f"Se eliminaron {count} consumos de tarjeta", "count": count}
+
+
+@router.get("/import-batches/{period_id}", response_model=list[ImportBatchResponse])
+def list_import_batches(period_id: int, db: Session = Depends(get_db)):
+    """List import batches for a given period, most recent first."""
+    rows = (
+        db.query(
+            Transaction.import_batch_id,
+            Transaction.period_id,
+            func.count(Transaction.id).label("count"),
+            func.sum(Transaction.amount).label("total_amount"),
+            func.min(Transaction.description).label("first_description"),
+            Transaction.credit_card_id,
+        )
+        .filter(
+            Transaction.period_id == period_id,
+            Transaction.category == "tarjeta",
+            Transaction.import_batch_id.isnot(None),
+        )
+        .group_by(Transaction.import_batch_id)
+        .order_by(func.max(Transaction.id).desc())
+        .all()
+    )
+    return [
+        ImportBatchResponse(
+            batch_id=r.import_batch_id,
+            period_id=r.period_id,
+            count=r.count,
+            total_amount=r.total_amount,
+            first_description=r.first_description,
+            credit_card_id=r.credit_card_id,
+        )
+        for r in rows
+    ]
+
+
+@router.delete("/import-batches/{batch_id}", status_code=200)
+def delete_import_batch(batch_id: str, db: Session = Depends(get_db)):
+    """Delete all transactions and card purchases from a specific import batch."""
+    txns = db.query(Transaction).filter(Transaction.import_batch_id == batch_id).all()
+    if not txns:
+        raise HTTPException(404, "Batch not found")
+
+    # Collect card_purchase_ids to clean up
+    purchase_ids = {t.card_purchase_id for t in txns if t.card_purchase_id is not None}
+
+    count = len(txns)
+    for t in txns:
+        db.delete(t)
+
+    # Also delete the CardPurchase records created in this batch
+    if purchase_ids:
+        db.query(CardPurchase).filter(CardPurchase.id.in_(purchase_ids)).delete(
+            synchronize_session=False
+        )
+
+    db.commit()
+    return {"message": f"Se eliminaron {count} consumos del lote de importación", "count": count}
 
 
 @router.delete("/transactions/{txn_id}", status_code=204)
@@ -793,11 +854,20 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
         raise HTTPException(404, "Period not found")
 
     # Load existing card transactions for this period to detect duplicates
-    existing_txns = db.query(Transaction).filter(
+    existing_txns = list(db.query(Transaction).filter(
         Transaction.period_id == data.period_id,
         Transaction.category == "tarjeta",
-    ).all()
+    ).all())
 
+    # Also load cuota transactions from ALL periods (for cross-period dedup)
+    cuota_txns_other_periods = db.query(Transaction).filter(
+        Transaction.period_id != data.period_id,
+        Transaction.category == "tarjeta",
+        Transaction.card_purchase_id.isnot(None),
+    ).all()
+    all_cuota_txns = existing_txns + list(cuota_txns_other_periods)
+
+    batch_id = str(uuid.uuid4())
     created = 0
     skipped = 0
     cuotas_created = 0
@@ -807,7 +877,9 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
         line_date = date.fromisoformat(line.date) if line.date else txn_date
 
         # Check for duplicate: same base description + similar amount already exists
-        is_duplicate = _find_duplicate(existing_txns, line)
+        # For cuotas, also check across all periods (future cuotas may already exist)
+        check_against = all_cuota_txns if (line.installment_current and line.installment_total) else existing_txns
+        is_duplicate = _find_duplicate(check_against, line)
         if is_duplicate:
             skipped += 1
             continue
@@ -847,8 +919,11 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
                     card_purchase_id=purchase.id,
                     installment_number=i,
                     credit_card_id=data.credit_card_id,
+                    import_batch_id=batch_id,
                 )
                 db.add(txn)
+                existing_txns.append(txn)
+                all_cuota_txns.append(txn)
                 created += 1
                 y, m = _next_month(y, m)
             cuotas_created += 1
@@ -866,8 +941,10 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
                 is_fixed=False,
                 notes="Importado desde resumen de tarjeta",
                 credit_card_id=data.credit_card_id,
+                import_batch_id=batch_id,
             )
             db.add(txn)
+            existing_txns.append(txn)
             created += 1
 
     db.commit()
@@ -876,26 +953,53 @@ def import_statement(data: StatementImportRequest, db: Session = Depends(get_db)
         msg += f" ({cuotas_created} en cuotas con cuotas futuras pre-cargadas)"
     if skipped > 0:
         msg += f". Se omitieron {skipped} que ya estaban cargados"
-    return {"message": msg, "count": created, "skipped": skipped, "installment_purchases": cuotas_created}
+    return {"message": msg, "count": created, "skipped": skipped, "installment_purchases": cuotas_created, "batch_id": batch_id}
+
+
+def _normalize_description(desc: str) -> str:
+    """Normalize a description for comparison: lowercase, strip common suffixes,
+    remove extra whitespace and punctuation differences."""
+    d = desc.lower().strip()
+    # Remove cuota notation like "(cuota 4/6)"
+    d = re.sub(r'\(cuota\s+\d+/\d+\)', '', d).strip()
+    # Remove common business suffixes
+    d = re.sub(r'\b(s\.?r\.?l\.?|s\.?a\.?|s\.?a\.?s\.?)\b', '', d).strip()
+    # Remove trailing/leading punctuation and extra spaces
+    d = re.sub(r'[*\-–—_.]+$', '', d).strip()
+    d = re.sub(r'^[*\-–—_.]+', '', d).strip()
+    d = re.sub(r'\s+', ' ', d)
+    return d
 
 
 def _find_duplicate(existing_txns: list, line: StatementLinePreview) -> bool:
-    """Check if a statement line matches an already-existing transaction."""
-    desc_lower = line.description.lower().strip()
+    """Check if a statement line matches an already-existing transaction.
+
+    Uses normalized descriptions and flexible matching to catch duplicates
+    even when descriptions differ slightly between billing cycles.
+    """
+    desc_norm = _normalize_description(line.description)
     for txn in existing_txns:
-        txn_desc = txn.description.lower().strip()
+        txn_norm = _normalize_description(txn.description)
         # Check amount match (within 1 peso tolerance for rounding)
         if abs(txn.amount - line.amount) > 1:
             continue
-        # Exact description match
-        if txn_desc == desc_lower:
+        # Exact normalized match
+        if txn_norm == desc_norm:
             return True
-        # Pre-loaded cuota: "ZARA (cuota 4/6)" matches imported "ZARA"
-        if desc_lower in txn_desc and txn.card_purchase_id is not None:
+        # Pre-loaded cuota: normalized "ZARA" matches existing "ZARA (cuota 4/6)"
+        if desc_norm and desc_norm in txn_norm and txn.card_purchase_id is not None:
             return True
-        # Imported description contained in existing (e.g. partial match)
-        if txn_desc in desc_lower:
+        # Reverse: existing normalized description contained in import line
+        if txn_norm and txn_norm in desc_norm:
             return True
+        # Cuota-specific: if importing a cuota, check if same base description
+        # and installment already exists
+        if (line.installment_current and line.installment_total
+                and txn.card_purchase_id is not None
+                and txn.installment_number == line.installment_current):
+            # Check base description similarity
+            if desc_norm in txn_norm or txn_norm in desc_norm:
+                return True
     return False
 
 
