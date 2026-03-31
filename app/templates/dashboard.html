@@ -797,18 +797,19 @@ function renderTransactions(txns) {
         html += `
         <tr class="tc-row" onclick="toggleTC()">
             <td colspan="2">
-                <span class="tc-toggle" id="tcToggle">&#9654;</span>
-                Tarjeta de credito
-                <span class="tc-count">${cardTxns.length} consumo${cardTxns.length > 1 ? 's' : ''}</span>
-            </td>
-            <td class="amount-expense">- ${fmt(cardTotal)}</td>
-            <td><span class="badge badge-expense">Gasto</span></td>
-            <td>
-                <div style="display:flex;gap:4px;flex-wrap:nowrap">
-                    <button class="btn btn-sm" style="background:#e67e22;color:#fff;font-size:0.7rem;white-space:nowrap;padding:2px 6px" onclick="event.stopPropagation(); undoLastImport()">Deshacer</button>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span>
+                        <span class="tc-toggle" id="tcToggle">&#9654;</span>
+                        Tarjeta de credito
+                        <span class="tc-count">${cardTxns.length} consumo${cardTxns.length > 1 ? 's' : ''}</span>
+                    </span>
+                    <button class="btn btn-sm" style="background:#e67e22;color:#fff;font-size:0.7rem;white-space:nowrap;padding:2px 6px;margin-left:auto" onclick="event.stopPropagation(); undoLastImport()">Deshacer importacion</button>
                     <button class="btn btn-sm" style="background:#c0392b;color:#fff;font-size:0.7rem;white-space:nowrap;padding:2px 6px" onclick="event.stopPropagation(); deleteAllCardTxns()">Borrar todos</button>
                 </div>
             </td>
+            <td class="amount-expense">- ${fmt(cardTotal)}</td>
+            <td><span class="badge badge-expense">Gasto</span></td>
+            <td></td>
         </tr>`;
         // Group by credit card
         const cardMap = new Map();
