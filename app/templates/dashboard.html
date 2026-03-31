@@ -821,9 +821,10 @@ function renderTransactions(txns) {
         const cardById = Object.fromEntries(creditCards.map(c => [c.id, c]));
         for (const [cardId, txns] of cardMap) {
             const card = cardById[cardId];
+            const cardTotal2 = txns.reduce((s, t) => s + t.amount, 0);
             if (card && cardMap.size > 1) {
                 const cardColor = card.color || 'var(--pink-dark)';
-                html += `<tr class="tc-detail hidden"><td colspan="5" style="padding-left:1.5rem;font-weight:600;font-size:0.85rem;color:${cardColor}">${card.name}</td></tr>`;
+                html += `<tr class="tc-detail hidden"><td colspan="2" style="padding-left:1.5rem;font-weight:600;font-size:0.85rem;color:${cardColor}">${card.name} <span style="font-weight:400;font-size:0.8rem;color:var(--gray)">(${txns.length} consumo${txns.length > 1 ? 's' : ''})</span></td><td class="amount-expense" style="font-size:0.85rem;font-weight:600;color:${cardColor}">- ${fmt(cardTotal2)}</td><td colspan="2"></td></tr>`;
             }
             html += txns.map(t => {
                 const cardBadge = card ? `<span class="badge" style="background:${card.color}22;color:${card.color}">${card.name}</span>` : '';
